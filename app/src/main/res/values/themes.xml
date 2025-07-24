@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Base application theme.
+        The DayNight parent automatically handles light and dark themes.
+    -->
+    <style name="Theme.ChoreoUI" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- You can add customizations for the splash screen here if you want -->
+    </style>
+</resources>
