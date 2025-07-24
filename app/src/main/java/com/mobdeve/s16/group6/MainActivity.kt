@@ -115,7 +115,7 @@ class MainActivity : ComponentActivity() {
 
                     }
                     composable("home") {
-                        Text("Welcome to Home!") //placeholder
+                        PeopleTab()
                     }
                 }
             }
