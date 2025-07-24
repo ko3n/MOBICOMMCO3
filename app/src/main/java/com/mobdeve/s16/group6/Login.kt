@@ -1,5 +1,7 @@
 package com.mobdeve.s16.group6
 
+import android.widget.Toast
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -23,7 +26,8 @@ import com.mobdeve.s16.group6.ui.theme.*
 @Composable
 fun LoginScreen(
     onBackClicked: () -> Unit,
-    onLoginClicked: (String, String) -> Unit
+    onLoginClicked: (String, String) -> Unit,
+    showErrorToast: (String) -> Unit
 ) {
     var householdName by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -128,6 +132,6 @@ fun LoginScreen(
 @Composable
 fun LoginScreenPreview() {
     ChoreoUITheme {
-        LoginScreen(onBackClicked = {}, onLoginClicked = { _, _ -> })
+        LoginScreen(onBackClicked = {}, onLoginClicked = { _, _ -> }, showErrorToast = {})
     }
 }
