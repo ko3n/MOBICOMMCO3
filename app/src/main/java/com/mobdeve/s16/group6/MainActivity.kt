@@ -5,9 +5,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -17,6 +15,7 @@ import com.mobdeve.s16.group6.ui.theme.ChoreoUITheme
 
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
+    private val peopleViewModel: PeopleViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,8 +42,13 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val isAuthenticated by authViewModel.isAuthenticated.collectAsState()
-                LaunchedEffect(isAuthenticated) {
-                    if (isAuthenticated) {
+                val currentHousehold by authViewModel.currentHousehold.collectAsState()
+
+                LaunchedEffect(isAuthenticated, currentHousehold) {
+                    if (isAuthenticated && currentHousehold != null) {
+                        currentHousehold?.let { household ->
+                            peopleViewModel.setHousehold(household.name, household.email)
+                        }
                         navController.navigate("home") {
                             popUpTo(navController.graph.startDestinationId) { inclusive = true }
                         }
@@ -88,13 +92,13 @@ class MainActivity : ComponentActivity() {
                         // Pass the showErrorToast lambda
                         LoginScreen(
                             onBackClicked = { navController.popBackStack() },
-                            onLoginClicked = { household, password ->
-                                authViewModel.login(household, password) { success ->
+                            onLoginClicked = { householdName, password ->
+                                authViewModel.login(householdName, password) { success ->
 
                                 }
                             },
                             showErrorToast = { message ->
-
+                                // AuthViewModel now handles toasts directly
                             }
                         )
 
@@ -102,12 +106,12 @@ class MainActivity : ComponentActivity() {
                     composable("signup") {
                         SignUpScreen(
                             onBackClicked = { navController.popBackStack() },
-                            onRegisterClicked = { household, email, password, confirm ->
+                            onRegisterClicked = { householdName, email, password, confirm ->
                                 if (password != confirm) {
                                     authViewModel.setSignupError("Passwords do not match")
                                     return@SignUpScreen
                                 }
-                                authViewModel.register(household, email, password) { success ->
+                                authViewModel.register(householdName, email, password) { success ->
 
                                 }
                             }
@@ -115,7 +119,8 @@ class MainActivity : ComponentActivity() {
 
                     }
                     composable("home") {
-                        PeopleTab()
+                        // Pass the PeopleViewModel instance to PeopleTab
+                        PeopleTab(peopleViewModel = peopleViewModel, authViewModel = authViewModel)
                     }
                 }
             }

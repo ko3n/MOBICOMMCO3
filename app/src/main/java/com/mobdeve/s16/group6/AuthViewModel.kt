@@ -3,63 +3,72 @@ package com.mobdeve.s16.group6
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.mobdeve.s16.group6.data.Household
 import com.mobdeve.s16.group6.data.HouseholdRepo
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository: HouseholdRepo = HouseholdRepo(application.applicationContext)
-
-    private val _loginErrorMessage = MutableSharedFlow<String?>()
-    val loginErrorMessage: SharedFlow<String?> = _loginErrorMessage.asSharedFlow()
-
-    private val _signupErrorMessage = MutableSharedFlow<String?>()
-    val signupErrorMessage: SharedFlow<String?> = _signupErrorMessage.asSharedFlow()
+    private val householdRepo = HouseholdRepo(application)
 
     private val _isAuthenticated = MutableStateFlow(false)
     val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
 
-    fun login(household: String, password: String, onComplete: (Boolean) -> Unit) {
+    private val _loginErrorMessage = MutableStateFlow<String?>(null)
+    val loginErrorMessage: StateFlow<String?> = _loginErrorMessage.asStateFlow()
+
+    private val _signupErrorMessage = MutableStateFlow<String?>(null)
+    val signupErrorMessage: StateFlow<String?> = _signupErrorMessage.asStateFlow()
+
+    private val _currentHousehold = MutableStateFlow<Household?>(null)
+    val currentHousehold: StateFlow<Household?> = _currentHousehold.asStateFlow()
+
+    fun login(householdName: String, password: String, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
-            val success = repository.login(household, password)
-            if (success) {
+            _loginErrorMessage.value = null
+            val household = householdRepo.authenticateAndGetHousehold(householdName, password)
+            if (household != null) {
                 _isAuthenticated.value = true
-                _loginErrorMessage.emit(null) // Clear any previous error
+                _currentHousehold.value = household
+                onComplete(true)
             } else {
-                _loginErrorMessage.emit("Invalid credentials")
+                _loginErrorMessage.value = "Invalid household name or password."
                 _isAuthenticated.value = false
+                _currentHousehold.value = null
+                onComplete(false)
             }
-            onComplete(success)
         }
     }
 
-    fun register(household: String, email: String, password: String, onComplete: (Boolean) -> Unit) {
+    fun register(householdName: String, email: String, password: String, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
-            when (repository.register(household, email, password)) {
-                is HouseholdRepo.RegistrationResult.Success -> {
-                    _isAuthenticated.value = true
-                    _signupErrorMessage.emit(null) // Clear any previous error
-                    onComplete(true)
+            _signupErrorMessage.value = null
+            when (householdRepo.register(householdName, email, password)) {
+                HouseholdRepo.RegistrationResult.Success -> {
+                    val household = householdRepo.authenticateAndGetHousehold(householdName, password)
+                    if (household != null) {
+                        _isAuthenticated.value = true
+                        _currentHousehold.value = household
+                        onComplete(true)
+                    } else {
+                        _signupErrorMessage.value = "Registration successful but failed to log in automatically."
+                        onComplete(false)
+                    }
                 }
-                is HouseholdRepo.RegistrationResult.Duplicate -> {
-                    _signupErrorMessage.emit("Household name or email already exists")
+                HouseholdRepo.RegistrationResult.Duplicate -> {
+                    _signupErrorMessage.value = "Household name or email already taken."
                     _isAuthenticated.value = false
+                    _currentHousehold.value = null
                     onComplete(false)
                 }
             }
         }
     }
 
-    // New function to handle password mismatch error from UI
     fun setSignupError(message: String) {
-        viewModelScope.launch {
-            _signupErrorMessage.emit(message)
-        }
+        _signupErrorMessage.value = message
     }
 }

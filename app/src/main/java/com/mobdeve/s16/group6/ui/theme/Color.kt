@@ -16,3 +16,5 @@ val AppDarkBlue = Color(0xFF2E3A59)
 val AppGray = Color(0xFFCED4DA)
 val AppCardBlue = Color(0xFF3B4A7A)
 val AppTextBlack = Color(0xFF1D1D1F)
+
+val AppLightBlue = Color(0xFFB3E5FC)

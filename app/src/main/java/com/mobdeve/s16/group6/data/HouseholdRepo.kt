@@ -15,8 +15,8 @@ class HouseholdRepo(context: Context) {
         return RegistrationResult.Success
     }
 
-    suspend fun login(name: String, password: String): Boolean {
-        return dao.authenticate(name, password) != null
+    suspend fun authenticateAndGetHousehold(name: String, password: String): Household? {
+        return dao.authenticate(name, password)
     }
 
     sealed class RegistrationResult {

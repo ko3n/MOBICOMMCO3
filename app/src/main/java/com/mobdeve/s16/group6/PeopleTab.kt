@@ -1,8 +1,12 @@
 package com.mobdeve.s16.group6
 
+import android.app.Application
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -13,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -20,13 +25,31 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mobdeve.s16.group6.data.Person
 import com.mobdeve.s16.group6.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PeopleTab() {
-    // State to control whether the "create new" dialog is visible
+fun PeopleTab(
+    peopleViewModel: PeopleViewModel = viewModel(), // Get ViewModel instance
+    authViewModel: AuthViewModel = viewModel() // Get AuthViewModel instance
+) {
     var showDialog by remember { mutableStateOf(false) }
+
+    // Collect the list of people from the ViewModel
+    val people by peopleViewModel.people.collectAsState()
+    val addPersonError by peopleViewModel.addPersonError.collectAsState()
+    val currentHousehold by authViewModel.currentHousehold.collectAsState() // Get current household details
+
+    // Show error toast if adding person fails
+    val context = LocalContext.current
+    LaunchedEffect(addPersonError) {
+        addPersonError?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            peopleViewModel.clearAddPersonError() // Clear the error after showing
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -62,22 +85,42 @@ fun PeopleTab() {
                 .padding(paddingValues)
                 .background(Color.White)
                 .padding(horizontal = 40.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally // Center horizontally
         ) {
-            Text(
-                text = "Is anyone home?",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = AppCardBlue
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Add household members using the button above!",
-                fontSize = 18.sp,
-                color = AppCardBlue.copy(alpha = 0.8f),
-                textAlign = TextAlign.Center
-            )
+            // Conditionally show "Is anyone home?" text
+            if (people.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Is anyone home?",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppCardBlue
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Add household members using the button above!",
+                        fontSize = 18.sp,
+                        color = AppCardBlue.copy(alpha = 0.8f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                // Display the list of people if not empty
+                Spacer(modifier = Modifier.height(16.dp)) // Add some space from top bar
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp), // Space between items
+                    horizontalAlignment = Alignment.CenterHorizontally // Center person items
+                ) {
+                    items(people) { person ->
+                        PersonItem(person = person)
+                    }
+                }
+            }
         }
     }
 
@@ -87,10 +130,42 @@ fun PeopleTab() {
             onDismiss = { showDialog = false },
             onAddPerson = { name ->
                 showDialog = false
+                currentHousehold?.let { household ->
+                    peopleViewModel.addPerson(name, household.name, household.email) // Pass current household info
+                } ?: run {
+                    // This case should ideally not happen if household is properly set on login
+                    Toast.makeText(context, "Error: Household not identified. Please re-login.", Toast.LENGTH_LONG).show()
+                }
             }
         )
     }
 }
+
+@Composable
+fun PersonItem(person: Person) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = AppLightBlue), // Use a color for the background
+        modifier = Modifier
+            .fillMaxWidth(0.8f) // Make the rectangle take 80% of width
+            .height(50.dp) // Fixed height for consistency
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = person.name,
+                color = Color.White, // Text color
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        }
+    }
+}
+
 
 @Composable
 fun CreatePersonDialog(onDismiss: () -> Unit, onAddPerson: (String) -> Unit) {
@@ -136,16 +211,15 @@ fun CreatePersonDialog(onDismiss: () -> Unit, onAddPerson: (String) -> Unit) {
                     value = name,
                     onValueChange = { name = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Enter your name", color = Color.Gray) },
+                    placeholder = { Text("Enter person's name", color = Color.Gray) },
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = AppGray,
                         unfocusedContainerColor = AppGray,
-
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
-                        cursorColor = Color.White
+                        cursorColor = Color.Black // Changed cursor color for visibility
                     )
                 )
 
@@ -174,6 +248,10 @@ fun CreatePersonDialog(onDismiss: () -> Unit, onAddPerson: (String) -> Unit) {
 @Composable
 fun PeopleTabPreview() {
     ChoreoUITheme {
-        PeopleTab()
+        // Provide dummy ViewModels for preview
+        PeopleTab(
+            peopleViewModel = PeopleViewModel(Application()),
+            authViewModel = AuthViewModel(Application())
+        )
     }
 }
