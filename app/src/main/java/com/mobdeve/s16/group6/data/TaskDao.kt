@@ -1,0 +1,22 @@
+package com.mobdeve.s16.group6.data
+
+import androidx.room.*
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface TaskDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE) // Use REPLACE for updates or new inserts
+    suspend fun insert(task: Task): Long
+
+    @Update
+    suspend fun update(task: Task)
+
+    @Delete
+    suspend fun delete(task: Task)
+
+    @Query("SELECT * FROM tasks WHERE assigneeId = :personId AND householdId = :householdId ORDER BY dueDateMillis ASC, priority DESC")
+    fun getTasksForPerson(personId: Int, householdId: Int): Flow<List<Task>>
+
+    @Query("SELECT * FROM tasks WHERE householdId = :householdId ORDER BY dueDateMillis ASC, priority DESC")
+    fun getAllTasksForHousehold(householdId: Int): Flow<List<Task>>
+}

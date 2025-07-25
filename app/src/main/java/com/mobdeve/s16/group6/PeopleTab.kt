@@ -26,28 +26,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.mobdeve.s16.group6.data.Person
 import com.mobdeve.s16.group6.ui.theme.*
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PeopleTab(
-    peopleViewModel: PeopleViewModel = viewModel(), // Get ViewModel instance
-    authViewModel: AuthViewModel = viewModel() // Get AuthViewModel instance
+    peopleViewModel: PeopleViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel(),
+    navController: NavController
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
-    // Collect the list of people from the ViewModel
     val people by peopleViewModel.people.collectAsState()
     val addPersonError by peopleViewModel.addPersonError.collectAsState()
-    val currentHousehold by authViewModel.currentHousehold.collectAsState() // Get current household details
+    val currentHousehold by authViewModel.currentHousehold.collectAsState() // Access currentHousehold here
 
-    // Show error toast if adding person fails
     val context = LocalContext.current
     LaunchedEffect(addPersonError) {
         addPersonError?.let { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            peopleViewModel.clearAddPersonError() // Clear the error after showing
+            peopleViewModel.clearAddPersonError()
         }
     }
 
@@ -78,16 +81,14 @@ fun PeopleTab(
             }
         }
     ) { paddingValues ->
-        // Main content of the screen
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(Color.White)
                 .padding(horizontal = 40.dp),
-            horizontalAlignment = Alignment.CenterHorizontally // Center horizontally
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Conditionally show "Is anyone home?" text
             if (people.isEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
@@ -109,31 +110,43 @@ fun PeopleTab(
                     )
                 }
             } else {
-                // Display the list of people if not empty
-                Spacer(modifier = Modifier.height(16.dp)) // Add some space from top bar
+                Spacer(modifier = Modifier.height(16.dp))
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp), // Space between items
-                    horizontalAlignment = Alignment.CenterHorizontally // Center person items
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     items(people) { person ->
-                        PersonItem(person = person)
+                        PersonItem(
+                            person = person,
+                            onPersonClick = { clickedPerson ->
+                                currentHousehold?.let { household ->
+                                    val encodedPersonName = URLEncoder.encode(clickedPerson.name, StandardCharsets.UTF_8.toString())
+                                    val encodedHouseholdName = URLEncoder.encode(household.name, StandardCharsets.UTF_8.toString())
+                                    val encodedHouseholdEmail = URLEncoder.encode(household.email, StandardCharsets.UTF_8.toString())
+
+                                    navController.navigate(
+                                        "tasks/${clickedPerson.id}/$encodedPersonName/$encodedHouseholdName/$encodedHouseholdEmail"
+                                    )
+                                } ?: run {
+                                    Toast.makeText(context, "Error: Household data not available to open tasks.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        )
                     }
                 }
             }
         }
     }
 
-    // This part will only be executed when showDialog is true
     if (showDialog) {
         CreatePersonDialog(
             onDismiss = { showDialog = false },
             onAddPerson = { name ->
                 showDialog = false
                 currentHousehold?.let { household ->
-                    peopleViewModel.addPerson(name, household.name, household.email) // Pass current household info
+                    peopleViewModel.addPerson(name, household.name, household.email)
                 } ?: run {
-                    // This case should ideally not happen if household is properly set on login
                     Toast.makeText(context, "Error: Household not identified. Please re-login.", Toast.LENGTH_LONG).show()
                 }
             }
@@ -142,13 +155,14 @@ fun PeopleTab(
 }
 
 @Composable
-fun PersonItem(person: Person) {
+fun PersonItem(person: Person, onPersonClick: (Person) -> Unit) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = AppLightBlue), // Use a color for the background
+        colors = CardDefaults.cardColors(containerColor = AppLightBlue),
         modifier = Modifier
-            .fillMaxWidth(0.8f) // Make the rectangle take 80% of width
-            .height(50.dp) // Fixed height for consistency
+            .fillMaxWidth(0.8f)
+            .height(50.dp)
+            .clickable { onPersonClick(person) }
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -156,7 +170,7 @@ fun PersonItem(person: Person) {
         ) {
             Text(
                 text = person.name,
-                color = Color.White, // Text color
+                color = Color.White,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
@@ -181,7 +195,6 @@ fun CreatePersonDialog(onDismiss: () -> Unit, onAddPerson: (String) -> Unit) {
                 modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Top row with "create new" and close button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -206,7 +219,6 @@ fun CreatePersonDialog(onDismiss: () -> Unit, onAddPerson: (String) -> Unit) {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Text field for name
                 TextField(
                     value = name,
                     onValueChange = { name = it },
@@ -219,13 +231,12 @@ fun CreatePersonDialog(onDismiss: () -> Unit, onAddPerson: (String) -> Unit) {
                         unfocusedContainerColor = AppGray,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
-                        cursorColor = Color.Black // Changed cursor color for visibility
+                        cursorColor = Color.Black
                     )
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // "Add" button at the bottom right
                 Button(
                     onClick = { onAddPerson(name) },
                     enabled = name.isNotBlank(),
@@ -248,10 +259,10 @@ fun CreatePersonDialog(onDismiss: () -> Unit, onAddPerson: (String) -> Unit) {
 @Composable
 fun PeopleTabPreview() {
     ChoreoUITheme {
-        // Provide dummy ViewModels for preview
         PeopleTab(
             peopleViewModel = PeopleViewModel(Application()),
-            authViewModel = AuthViewModel(Application())
+            authViewModel = AuthViewModel(Application()),
+            navController = rememberNavController()
         )
     }
 }

@@ -26,8 +26,7 @@ import com.mobdeve.s16.group6.ui.theme.*
 @Composable
 fun LoginScreen(
     onBackClicked: () -> Unit,
-    onLoginClicked: (String, String) -> Unit,
-    showErrorToast: (String) -> Unit
+    onLoginClicked: (String, String) -> Unit
 ) {
     var householdName by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -132,6 +131,6 @@ fun LoginScreen(
 @Composable
 fun LoginScreenPreview() {
     ChoreoUITheme {
-        LoginScreen(onBackClicked = {}, onLoginClicked = { _, _ -> }, showErrorToast = {})
+        LoginScreen(onBackClicked = {}, onLoginClicked = { _, _ -> })
     }
 }

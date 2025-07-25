@@ -5,10 +5,11 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [Household::class, Person::class], version = 2)
+@Database(entities = [Household::class, Person::class, Task::class], version = 3)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun householdDao(): HouseholdDao
     abstract fun personDao(): PersonDao
+    abstract fun taskDao(): TaskDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
@@ -19,7 +20,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java, "choreo-db"
                 )
-                    .fallbackToDestructiveMigration() // (ONLY FOR DEVELOPMENT)
+                    .fallbackToDestructiveMigration() // <--- Keep this for development
                     .build().also { INSTANCE = it }
             }
     }

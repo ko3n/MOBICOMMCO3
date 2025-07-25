@@ -5,17 +5,21 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import com.mobdeve.s16.group6.ui.theme.ChoreoUITheme
-
 
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
     private val peopleViewModel: PeopleViewModel by viewModels()
+    private val taskViewModel: TaskViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,6 +33,7 @@ class MainActivity : ComponentActivity() {
                     authViewModel.loginErrorMessage.collect { message ->
                         message?.let {
                             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+                            authViewModel.clearLoginError()
                         }
                     }
                 }
@@ -37,6 +42,7 @@ class MainActivity : ComponentActivity() {
                     authViewModel.signupErrorMessage.collect { message ->
                         message?.let {
                             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+                            authViewModel.clearSignupError()
                         }
                     }
                 }
@@ -89,19 +95,15 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable("login") {
-                        // Pass the showErrorToast lambda
                         LoginScreen(
                             onBackClicked = { navController.popBackStack() },
                             onLoginClicked = { householdName, password ->
                                 authViewModel.login(householdName, password) { success ->
-
+                                    // Logic handled by LaunchedEffect
                                 }
                             },
-                            showErrorToast = { message ->
-                                // AuthViewModel now handles toasts directly
-                            }
-                        )
 
+                            )
                     }
                     composable("signup") {
                         SignUpScreen(
@@ -112,15 +114,63 @@ class MainActivity : ComponentActivity() {
                                     return@SignUpScreen
                                 }
                                 authViewModel.register(householdName, email, password) { success ->
-
+                                    // Logic handled by LaunchedEffect
                                 }
                             }
                         )
-
                     }
                     composable("home") {
-                        // Pass the PeopleViewModel instance to PeopleTab
-                        PeopleTab(peopleViewModel = peopleViewModel, authViewModel = authViewModel)
+                        PeopleTab(
+                            peopleViewModel = peopleViewModel,
+                            authViewModel = authViewModel,
+                            navController = navController
+                        )
+                    }
+
+                    composable(
+                        "tasks/{personId}/{personName}/{householdName}/{householdEmail}",
+                        arguments = listOf(
+                            navArgument("personId") { type = NavType.IntType }, // Changed to IntType
+                            navArgument("personName") { type = NavType.StringType },
+                            navArgument("householdName") { type = NavType.StringType },
+                            navArgument("householdEmail") { type = NavType.StringType }
+                        )
+                    ) { backStackEntry ->
+                        val tasks by taskViewModel.tasks.collectAsState()
+                        val householdMembers by taskViewModel.householdMembers.collectAsState()
+
+                        val personId = backStackEntry.arguments?.getInt("personId") // Changed to getInt
+                        val personName = backStackEntry.arguments?.getString("personName")
+                        val householdName = backStackEntry.arguments?.getString("householdName")
+                        val householdEmail = backStackEntry.arguments?.getString("householdEmail")
+
+                        if (personId != null && personName != null && householdName != null && householdEmail != null) {
+                            LaunchedEffect(personId, householdName, householdEmail) {
+                                taskViewModel.initialize(personId, householdName, householdEmail)
+                            }
+
+                            TaskScreen(
+                                personName = personName,
+                                tasks = tasks,
+                                householdMembers = householdMembers,
+                                onBackClicked = { navController.popBackStack() },
+                                onAddTask = { task ->
+                                    taskViewModel.addTask(
+                                        title = task.title,
+                                        description = task.description,
+                                        dueDateMillis = task.dueDateMillis,
+                                        priority = task.priority,
+                                        assigneeId = task.assigneeId,
+                                        isRecurring = task.isRecurring,
+                                        recurringInterval = task.recurringInterval
+                                    )
+                                },
+                                onUpdateTask = { taskViewModel.updateTask(it) },
+                                onDeleteTask = { taskViewModel.deleteTask(it) }
+                            )
+                        } else {
+                            Text("Error: Task data missing", color = Color.Red)
+                        }
                     }
                 }
             }

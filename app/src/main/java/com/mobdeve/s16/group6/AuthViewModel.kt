@@ -71,4 +71,12 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun setSignupError(message: String) {
         _signupErrorMessage.value = message
     }
+
+    fun clearLoginError() {
+        _loginErrorMessage.value = null
+    }
+
+    fun clearSignupError() {
+        _signupErrorMessage.value = null
+    }
 }
