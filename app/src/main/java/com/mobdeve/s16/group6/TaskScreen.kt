@@ -25,8 +25,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,12 +66,27 @@ fun TaskScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "${personName}'s To-Do List",
+                        text = buildAnnotatedString {
+                            withStyle(
+                                style = SpanStyle(
+                                    color = Color.Red,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            ) {
+                                append("${personName}'s")
+                            }
+                            withStyle(
+                                style = SpanStyle(
+                                    color = AppTextBlack,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            ) {
+                                append(" TO-DO's")
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 2.sp,
-                        color = AppTextBlack
+                        letterSpacing = 2.sp
                     )
                 },
                 navigationIcon = {
@@ -500,13 +518,13 @@ fun CreateEditTaskDialog(
                             DividerDefaults.color
                         )
                         householdMembers.forEach { person ->
-                                DropdownMenuItem(
-                                    text = { Text(person.name) },
-                                    onClick = {
-                                        selectedAssigneeId = person.id
-                                        expandedAssignee = false
-                                    }
-                                )
+                            DropdownMenuItem(
+                                text = { Text(person.name) },
+                                onClick = {
+                                    selectedAssigneeId = person.id
+                                    expandedAssignee = false
+                                }
+                            )
                         }
                     }
                 }
