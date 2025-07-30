@@ -30,7 +30,8 @@ data class Task(
     val assigneeId: Int? = null,
     val isRecurring: Boolean = false,
     val recurringInterval: RecurringInterval? = null,
-    val householdId: Int // Link to the Household
+    val householdId: Int, // Link to the Household
+    var firebaseId: String? = null
 )
 
 enum class TaskPriority {
