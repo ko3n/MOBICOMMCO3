@@ -25,6 +25,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.mobdeve.s16.group6.utils.NotificationUtils
+import androidx.work.*
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()

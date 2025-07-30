@@ -220,9 +220,9 @@ fun TaskItem(
         householdMembers.find { it.id == task.assigneeId }?.name ?: "Unassigned"
     }
 
-    val dateFormatter = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+    val dateTimeFormatter = remember { SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", Locale.getDefault()) }
     val dueDateString = task.dueDateMillis?.let { millis ->
-        dateFormatter.format(Date(millis))
+        dateTimeFormatter.format(Date(millis))
     }
 
     Card(
@@ -320,6 +320,8 @@ fun CreateEditTaskDialog(
     var title by remember { mutableStateOf(task?.title ?: "") }
     var description by remember { mutableStateOf(task?.description ?: "") }
     var selectedDueDateMillis by remember { mutableStateOf(task?.dueDateMillis) }
+    var selectedHour by remember {mutableStateOf(0)}
+    var selectedMinute by remember {mutableStateOf(0)}
     var selectedPriority by remember { mutableStateOf(task?.priority ?: TaskPriority.LOW) }
     var selectedAssigneeId by remember { mutableStateOf(task?.assigneeId) }
     var isRecurring by remember { mutableStateOf(task?.isRecurring ?: false) }
@@ -331,6 +333,14 @@ fun CreateEditTaskDialog(
     val year = calendar.get(Calendar.YEAR)
     val month = calendar.get(Calendar.MONTH)
     val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+    LaunchedEffect(Unit) {
+        task?.dueDateMillis?.let {
+            val cal = Calendar.getInstance().apply { timeInMillis = it }
+            selectedHour = cal.get(Calendar.HOUR_OF_DAY)
+            selectedMinute = cal.get(Calendar.MINUTE)
+        }
+    }
 
     val datePickerDialog = remember {
         DatePickerDialog(
@@ -437,6 +447,46 @@ fun CreateEditTaskDialog(
                         IconButton(onClick = { selectedDueDateMillis = null }) {
                             Icon(Icons.Default.Close, "Clear Date", tint = Color.Red)
                         }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+
+                val timeText = String.format("%02d:%02d", selectedHour, selectedMinute)
+                val context = LocalContext.current
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Due Time: $timeText",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+
+//                    val context = LocalContext.current
+                    Button(
+                        onClick = {
+                            val timePickerDialog = android.app.TimePickerDialog(
+                                context,
+                                { _, hourOfDay, minute ->
+                                    selectedHour = hourOfDay
+                                    selectedMinute = minute
+                                },
+                                selectedHour,
+                                selectedMinute,
+                                true // is24HourView
+                            )
+                            timePickerDialog.show()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = AppDarkBlue
+                        )
+                    ) {
+                        Text("Select Time")
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
@@ -600,10 +650,20 @@ fun CreateEditTaskDialog(
                             return@Button
                         }
 
+                        val finalDueDateMillis = selectedDueDateMillis?.let {
+                            Calendar.getInstance().apply {
+                                timeInMillis = it
+                                set(Calendar.HOUR_OF_DAY, selectedHour)
+                                set(Calendar.MINUTE, selectedMinute)
+                                set(Calendar.SECOND, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }.timeInMillis
+                        }
+
                         val finalTask = task?.copy(
                             title = title,
                             description = description.takeIf { it.isNotBlank() },
-                            dueDateMillis = selectedDueDateMillis,
+                            dueDateMillis = finalDueDateMillis,
                             priority = selectedPriority,
                             assigneeId = selectedAssigneeId,
                             isRecurring = isRecurring,
@@ -611,7 +671,7 @@ fun CreateEditTaskDialog(
                         ) ?: Task(
                             title = title,
                             description = description.takeIf { it.isNotBlank() },
-                            dueDateMillis = selectedDueDateMillis,
+                            dueDateMillis = finalDueDateMillis,
                             priority = selectedPriority,
                             assigneeId = selectedAssigneeId,
                             isRecurring = isRecurring,

@@ -10,7 +10,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch // <-- Ensure this import is present
+import kotlinx.coroutines.launch //important
+import com.mobdeve.s16.group6.reminders.ReminderScheduler
 
 class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -100,8 +101,9 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
             )
             Log.d(TAG, "Attempting to add task: $newTask")
             try {
-                taskRepo.addTask(newTask)
-                Log.d(TAG, "Task added successfully.")
+                val taskId = taskRepo.addTask(newTask).toInt()
+                ReminderScheduler.scheduleFullReminderSet(appCtx, taskId, newTask.dueDateMillis ?: return@launch)
+                Log.d(TAG, "Task added and reminder scheduled.")
             } catch (e: Exception) {
                 Log.e(TAG, "Error adding task: ${e.message}", e)
                 Toast.makeText(appCtx, "Failed to add task: ${e.message}", Toast.LENGTH_LONG).show()
@@ -117,7 +119,9 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
             Log.d(TAG, "Attempting to update task: $task")
             try {
                 taskRepo.updateTask(task)
-                Log.d(TAG, "Task updated successfully.")
+                ReminderScheduler.cancelReminder(appCtx, task.id)
+                ReminderScheduler.scheduleFullReminderSet(appCtx, task.id, task.dueDateMillis ?: return@launch)
+                Log.d(TAG, "Task updated and reminder rescheduled.")
             } catch (e: Exception) {
                 Log.e(TAG, "Error updating task: ${e.message}", e)
                 Toast.makeText(appCtx, "Failed to update task: ${e.message}", Toast.LENGTH_LONG).show()
@@ -132,8 +136,9 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             Log.d(TAG, "Attempting to delete task: $task")
             try {
+                ReminderScheduler.cancelReminder(appCtx, task.id)
                 taskRepo.deleteTask(task)
-                Log.d(TAG, "Task deleted successfully.")
+                Log.d(TAG, "Task deleted and reminder removed.")
             } catch (e: Exception) {
                 Log.e(TAG, "Error deleting task: ${e.message}", e)
                 Toast.makeText(appCtx, "Failed to delete task: ${e.message}", Toast.LENGTH_LONG).show()
