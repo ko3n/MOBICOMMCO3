@@ -19,4 +19,7 @@ interface TaskDao {
 
     @Query("SELECT * FROM tasks WHERE householdId = :householdId ORDER BY dueDateMillis ASC, priority DESC")
     fun getAllTasksForHousehold(householdId: Int): Flow<List<Task>>
+
+    @Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
+    suspend fun getTaskById(taskId: Int): Task?
 }

@@ -8,8 +8,8 @@ class TaskRepo(context: Context) {
     private val taskDao = db.taskDao()
     private val personDao = db.personDao()
 
-    suspend fun addTask(task: Task) {
-        taskDao.insert(task)
+    suspend fun addTask(task: Task): Long {
+        return taskDao.insert(task)
     }
 
     suspend fun updateTask(task: Task) {

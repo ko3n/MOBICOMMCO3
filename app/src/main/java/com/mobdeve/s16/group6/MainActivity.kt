@@ -1,5 +1,7 @@
 package com.mobdeve.s16.group6
 
+import android.Manifest
+import android.app.Notification
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -15,14 +17,45 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.NavType
 import com.mobdeve.s16.group6.ui.theme.ChoreoUITheme
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import com.mobdeve.s16.group6.utils.NotificationUtils
+import androidx.work.*
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
     private val peopleViewModel: PeopleViewModel by viewModels()
     private val taskViewModel: TaskViewModel by viewModels()
 
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                NotificationUtils.showTaskNotification(
+                    this,
+                    "Notifications enabled!",
+                    "You'll now receive task reminders!",
+                    0
+                )
+            } else {
+                Toast.makeText(
+                    this,
+                    "Notifications are disabled, enable them in your device settings to receive task reminders.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        requestNotificationPermission()
+        createNotificationChannel()
 
         setContent {
             ChoreoUITheme {
@@ -173,6 +206,34 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    //creates the notif channel, but only supported in android 8.0+
+    private fun createNotificationChannel(){
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+            val channelId = "choreo_task_reminders"
+            val name = "Task Reminders"
+            val descriptionText = "notifies you about upcoming household tasks"
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel(channelId, name, importance).apply{
+                description = descriptionText
+            }
+
+            val notificationManager: NotificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }
