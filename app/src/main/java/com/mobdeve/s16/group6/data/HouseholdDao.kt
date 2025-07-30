@@ -7,6 +7,12 @@ interface HouseholdDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(household: Household)
 
+    @Update
+    suspend fun update(household: Household)
+
+    @Delete
+    suspend fun delete(household: Household)
+
     @Query("SELECT * FROM households WHERE name = :name OR email = :email LIMIT 1")
     suspend fun findByNameOrEmail(name: String, email: String): Household?
 
