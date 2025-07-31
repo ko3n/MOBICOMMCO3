@@ -12,33 +12,6 @@ class TaskDueReminderWorker(
     workerParams: WorkerParameters
 ) : CoroutineWorker(context, workerParams) {
 
-//    override suspend fun doWork(): Result {
-//        val taskId = inputData.getInt("taskId", -1)
-//        if (taskId == -1) return Result.failure()
-//
-//        val taskDao = AppDatabase.getInstance(applicationContext).taskDao()
-//        val task = taskDao.getTaskById(taskId) ?: return Result.failure()
-//
-//        val reminderType = inputData.getString("reminderType") ?: "due"
-//        val title = when (reminderType) {
-//            "day_before" -> "Reminder: ${task.title} is due tomorrow"
-//            else -> "Reminder: ${task.title}"
-//        }
-//        val message = when (reminderType) {
-//            "day_before" -> "This task is due in 1 day."
-//            else -> "This task is now due."
-//        }
-//
-//        NotificationUtils.showTaskNotification(
-//            context = applicationContext,
-//            title = title,
-//            message = message,
-//            notificationId = task.id
-//        )
-//
-//        return Result.success()
-//    }
-    //testing
     override suspend fun doWork(): Result {
         val taskId = inputData.getInt("taskId", -1)
         val reminderType = inputData.getString("reminderType") ?: "due"
@@ -53,14 +26,14 @@ class TaskDueReminderWorker(
         val task = taskDao.getTaskById(taskId)
         if (task == null) {
             Log.e("ReminderWorker", "Task not found for ID=$taskId")
-            return Result.failure()
+            return Result.retry()
         }
 
         Log.d("ReminderWorker", "Task loaded: ${task.title}")
 
         val (title, message) = when (reminderType) {
             "day_before" -> "Reminder: ${task.title} is due tomorrow" to "This task is due in 1 day."
-            "15min_before" -> "Reminder: ${task.title} is due soon" to "Only 15 minutes left!"
+            "due15s" -> "Reminder: ${task.title} is due in 15s" to "Only 15 seconds left!"
             else -> "Reminder: ${task.title}" to "This task is now due."
         }
 

@@ -1,10 +1,15 @@
 package com.mobdeve.s16.group6.reminders
 
 import android.content.Context
+import android.util.Log
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
+import com.mobdeve.s16.group6.utils.NotificationUtils
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 object ReminderScheduler {
@@ -12,6 +17,18 @@ object ReminderScheduler {
     fun scheduleReminder(context: Context, taskId: Int, dueTimeMillis: Long, suffix: String = "") {
         val now = System.currentTimeMillis()
         val delay = dueTimeMillis - now
+
+        //debug
+        val mins = delay / 60000
+        val formattedDue = SimpleDateFormat("MMM dd h:mm a", Locale.getDefault()).format(
+            Date(
+                dueTimeMillis
+            )
+        )
+        val formattedNow = SimpleDateFormat("MMM dd h:mm a", Locale.getDefault()).format(Date(now))
+        Log.d("ReminderScheduler", "Scheduling '$suffix' for taskId=$taskId")
+        Log.d("ReminderScheduler", "Now: $formattedNow, Due: $formattedDue, Delay: $delay ms ($mins min)")
+
 
         if (delay <= 0) return
 
@@ -34,6 +51,8 @@ object ReminderScheduler {
     }
 
     fun scheduleFullReminderSet(context: Context, taskId: Int, dueTimeMillis: Long) {
+        //debug reminder
+//        scheduleReminder(context, taskId, System.currentTimeMillis() + 15_000L, "due15s")
         scheduleReminder(context, taskId, dueTimeMillis, "due")
         scheduleReminder(context, taskId, dueTimeMillis - TimeUnit.DAYS.toMillis(1), "day_before")
     }

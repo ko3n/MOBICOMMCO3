@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch //important
 import com.mobdeve.s16.group6.reminders.ReminderScheduler
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -102,8 +105,22 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
             Log.d(TAG, "Attempting to add task: $newTask")
             try {
                 val taskId = taskRepo.addTask(newTask).toInt()
+
+                //debug
+//                val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+//                val formattedTime = formatter.format(Date(newTask.dueDateMillis ?: 0L))
+//                Log.d(TAG, "Scheduling reminder for task ID=$taskId at $formattedTime (millis=${newTask.dueDateMillis})")
+
                 ReminderScheduler.scheduleFullReminderSet(appCtx, taskId, newTask.dueDateMillis ?: return@launch)
-                Log.d(TAG, "Task added and reminder scheduled.")
+                Log.d(TAG, "Task added and reminder scheduled, taskID = $taskId.")
+
+                // debug
+//                ReminderScheduler.scheduleReminder(
+//                    context = appCtx,
+//                    taskId = taskId,
+//                    dueTimeMillis = newTask.dueDateMillis -  System.currentTimeMillis()
+//                )
+
             } catch (e: Exception) {
                 Log.e(TAG, "Error adding task: ${e.message}", e)
                 Toast.makeText(appCtx, "Failed to add task: ${e.message}", Toast.LENGTH_LONG).show()
