@@ -31,7 +31,8 @@ data class Task(
     val isRecurring: Boolean = false,
     val recurringInterval: RecurringInterval? = null,
     val householdId: Int, // Link to the Household
-    var firebaseId: String? = null
+    var firebaseId: String? = null,
+    var status: TaskStatus = TaskStatus.UPCOMING
 )
 
 enum class TaskPriority {
@@ -40,4 +41,11 @@ enum class TaskPriority {
 
 enum class RecurringInterval {
     DAILY, WEEKLY, MONTHLY, YEARLY
+}
+
+enum class TaskStatus {
+    UPCOMING,
+    COMPLETED,
+    DUE_TODAY,
+    OVERDUE
 }

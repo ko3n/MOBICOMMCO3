@@ -162,4 +162,11 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    fun markTaskCompleted(task: Task) {
+        viewModelScope.launch {
+            val completedTask = task.copy(status = TaskStatus.COMPLETED)
+            updateTask(completedTask)
+        }
+    }
 }

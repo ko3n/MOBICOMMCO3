@@ -38,6 +38,8 @@ import com.mobdeve.s16.group6.data.Person
 import com.mobdeve.s16.group6.data.RecurringInterval
 import com.mobdeve.s16.group6.data.Task
 import com.mobdeve.s16.group6.data.TaskPriority
+import com.mobdeve.s16.group6.data.TaskStatus
+import com.mobdeve.s16.group6.data.calculateStatus
 import com.mobdeve.s16.group6.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -150,13 +152,11 @@ fun TaskScreen(
                         TaskItem(
                             task = task,
                             householdMembers = householdMembers,
-                            onEditClick = {
-                                taskToEdit = it
-                                showCreateEditDialog = true
-                            },
-                            onDeleteClick = {
-                                taskToDelete = it
-                                showDeleteConfirmationDialog = true
+                            onEditClick = { taskToEdit = it; showCreateEditDialog = true },
+                            onDeleteClick = { taskToDelete = it; showDeleteConfirmationDialog = true },
+                            onCompleteClick = { task, checked ->
+                                if (checked) onUpdateTask(task.copy(status = TaskStatus.COMPLETED))
+                                else onUpdateTask(task.copy(status = calculateStatus(task.copy(status = TaskStatus.UPCOMING))))
                             }
                         )
                     }
@@ -214,7 +214,8 @@ fun TaskItem(
     task: Task,
     householdMembers: List<Person>,
     onEditClick: (Task) -> Unit,
-    onDeleteClick: (Task) -> Unit
+    onDeleteClick: (Task) -> Unit,
+    onCompleteClick: (Task, Boolean) -> Unit
 ) {
     val assigneeName = remember(task.assigneeId, householdMembers) {
         householdMembers.find { it.id == task.assigneeId }?.name ?: "Unassigned"
@@ -238,10 +239,19 @@ fun TaskItem(
                 .padding(16.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
             ) {
+                // Checkbox on the left of the title
+                Checkbox(
+                    checked = task.status == TaskStatus.COMPLETED,
+                    onCheckedChange = { checked ->
+                        onCompleteClick(task, checked)
+                    }
+                )
+
+                // Title next to checkbox
                 Text(
                     text = task.title,
                     color = AppTextBlack,
@@ -249,14 +259,14 @@ fun TaskItem(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                Row {
-                    IconButton(onClick = { onEditClick(task) }, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Edit, "Edit Task", tint = AppTextBlack)
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    IconButton(onClick = { onDeleteClick(task) }, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Delete, "Delete Task", tint = Color.Red)
-                    }
+
+                // Icons aligned to the right
+                IconButton(onClick = { onEditClick(task) }, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.Edit, "Edit Task", tint = AppTextBlack)
+                }
+                Spacer(Modifier.width(8.dp))
+                IconButton(onClick = { onDeleteClick(task) }, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.Delete, "Delete Task", tint = Color.Red)
                 }
             }
 
@@ -276,6 +286,21 @@ fun TaskItem(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                Chip(
+                    text = when (task.status) {
+                        TaskStatus.DUE_TODAY -> "Due Today"
+                        TaskStatus.OVERDUE -> "Overdue"
+                        TaskStatus.COMPLETED -> "Completed"
+                        TaskStatus.UPCOMING -> "UPCOMING"
+                    },
+                    color = when (task.status) {
+                        TaskStatus.COMPLETED -> Color(0xFF4CAF50) // Green
+                        TaskStatus.OVERDUE -> Color(0xFFF44336)   // Red
+                        TaskStatus.DUE_TODAY -> Color(0xFFFFC107) // Amber
+                        else -> AppCardBlue                        // Default blue/gray
+                    }
+                )
+
                 Chip(text = "Priority: ${task.priority.name}", color = AppCardBlue)
 
                 dueDateString?.let {
@@ -370,6 +395,7 @@ fun CreateEditTaskDialog(
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,

@@ -16,7 +16,8 @@ class TaskRepo(context: Context) {
      * Updates the local record with the Firebase ID if sync is successful.
      */
     suspend fun addTask(task: Task): Long {
-        val roomId = taskDao.insert(task)
+        val finalTask = task.copy(status = calculateStatus(task))
+        val roomId = taskDao.insert(finalTask)
         Log.d("TaskRepo", "Task inserted into Room with ID: $roomId")
 
         val localTask = taskDao.getTaskById(roomId.toInt())
@@ -46,13 +47,17 @@ class TaskRepo(context: Context) {
      * Updates local Room database, then attempts to sync to Firebase.
      */
     suspend fun updateTask(task: Task) {
-        try {
-            taskDao.update(task)
-            Log.d("TaskRepo", "Task updated in Room: ${task.title}")
+        val updatedTask = if (task.status != TaskStatus.COMPLETED)
+            task.copy(status = calculateStatus(task))
+        else task
 
-            if (task.firebaseId != null) {
-                firebaseTaskRepo.updateTask(task)
-                Log.d("TaskRepo", "Task updated in Firebase: ${task.firebaseId}")
+        try {
+            taskDao.update(updatedTask)
+            Log.d("TaskRepo", "Task updated in Room: ${updatedTask.title}")
+
+            if (updatedTask.firebaseId != null) {
+                firebaseTaskRepo.updateTask(updatedTask)
+                Log.d("TaskRepo", "Task updated in Firebase: ${updatedTask.firebaseId}")
             } else {
                 Log.w("TaskRepo", "Task has no Firebase ID, skipping Firebase update.")
             }
