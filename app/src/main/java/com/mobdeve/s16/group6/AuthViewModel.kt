@@ -68,6 +68,12 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun logout() {
+        viewModelScope.launch {
+            _isAuthenticated.value = false
+            _currentHousehold.value = null
+        }
+    }
     fun setSignupError(message: String) {
         _signupErrorMessage.value = message
     }

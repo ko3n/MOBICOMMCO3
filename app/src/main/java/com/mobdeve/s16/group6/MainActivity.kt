@@ -1,14 +1,19 @@
 package com.mobdeve.s16.group6
 
 import android.Manifest
-import android.app.Notification
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
@@ -22,11 +27,12 @@ import android.app.NotificationManager
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.mobdeve.s16.group6.utils.NotificationUtils
-import androidx.work.*
 import java.util.concurrent.TimeUnit
+
+
+import com.mobdeve.s16.group6.SettingsScreen
 
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
@@ -163,7 +169,7 @@ class MainActivity : ComponentActivity() {
                     composable(
                         "tasks/{personId}/{personName}/{householdName}/{householdEmail}",
                         arguments = listOf(
-                            navArgument("personId") { type = NavType.IntType }, // Changed to IntType
+                            navArgument("personId") { type = NavType.IntType },
                             navArgument("personName") { type = NavType.StringType },
                             navArgument("householdName") { type = NavType.StringType },
                             navArgument("householdEmail") { type = NavType.StringType }
@@ -172,7 +178,7 @@ class MainActivity : ComponentActivity() {
                         val tasks by taskViewModel.tasks.collectAsState()
                         val householdMembers by taskViewModel.householdMembers.collectAsState()
 
-                        val personId = backStackEntry.arguments?.getInt("personId") // Changed to getInt
+                        val personId = backStackEntry.arguments?.getInt("personId")
                         val personName = backStackEntry.arguments?.getString("personName")
                         val householdName = backStackEntry.arguments?.getString("householdName")
                         val householdEmail = backStackEntry.arguments?.getString("householdEmail")
@@ -187,6 +193,7 @@ class MainActivity : ComponentActivity() {
                                 tasks = tasks,
                                 householdMembers = householdMembers,
                                 onBackClicked = { navController.popBackStack() },
+                                onSettingsClicked = { navController.navigate("settings") },
                                 onAddTask = { task ->
                                     taskViewModel.addTask(
                                         title = task.title,
@@ -205,12 +212,40 @@ class MainActivity : ComponentActivity() {
                             Text("Error: Task data missing", color = Color.Red)
                         }
                     }
+
+
+                    composable("settings") {
+                        SettingsScreen(
+                            onBackClicked = { navController.popBackStack() },
+                            onProfileClicked = { navController.navigate("profile") },
+                            onLogoutClicked = {
+                                authViewModel.logout()
+                                navController.navigate("setup") {
+                                    // Clear the entire back stack
+                                    popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+
+                    // Add a placeholder for the profile screen
+                    composable("profile") {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("Profile Screen Placeholder")
+                            Button(onClick = { navController.popBackStack() }) {
+                                Text("Go Back")
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
-    //creates the notif channel, but only supported in android 8.0+
     private fun createNotificationChannel(){
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
             val channelId = "choreo_task_reminders"

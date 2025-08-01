@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
@@ -53,6 +54,7 @@ fun TaskScreen(
     tasks: List<Task>,
     householdMembers: List<Person>,
     onBackClicked: () -> Unit,
+    onSettingsClicked: () -> Unit,
     onAddTask: (Task) -> Unit,
     onUpdateTask: (Task) -> Unit,
     onDeleteTask: (Task) -> Unit
@@ -113,54 +115,78 @@ fun TaskScreen(
             }
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(Color.White)
-                .padding(horizontal = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (tasks.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "No tasks yet!",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppCardBlue
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Add new tasks using the button below.",
-                        fontSize = 18.sp,
-                        color = AppCardBlue.copy(alpha = 0.8f),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            } else {
-                Spacer(modifier = Modifier.height(16.dp))
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    items(tasks) { task ->
-                        TaskItem(
-                            task = task,
-                            householdMembers = householdMembers,
-                            onEditClick = { taskToEdit = it; showCreateEditDialog = true },
-                            onDeleteClick = { taskToDelete = it; showDeleteConfirmationDialog = true },
-                            onCompleteClick = { task, checked ->
-                                if (checked) onUpdateTask(task.copy(status = TaskStatus.COMPLETED))
-                                else onUpdateTask(task.copy(status = calculateStatus(task.copy(status = TaskStatus.UPCOMING))))
-                            }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (tasks.isEmpty()) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "No tasks yet!",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppCardBlue
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Add new tasks using the button below.",
+                            fontSize = 18.sp,
+                            color = AppCardBlue.copy(alpha = 0.8f),
+                            textAlign = TextAlign.Center
                         )
                     }
+                } else {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        items(tasks) { task ->
+                            TaskItem(
+                                task = task,
+                                householdMembers = householdMembers,
+                                onEditClick = { taskToEdit = it; showCreateEditDialog = true },
+                                onDeleteClick = { taskToDelete = it; showDeleteConfirmationDialog = true },
+                                onCompleteClick = { task, checked ->
+                                    if (checked) onUpdateTask(task.copy(status = TaskStatus.COMPLETED))
+                                    else onUpdateTask(task.copy(status = calculateStatus(task.copy(status = TaskStatus.UPCOMING))))
+                                }
+                            )
+                        }
+                    }
                 }
+            }
+
+            // Settings Button
+            IconButton(
+                onClick = {
+                    onSettingsClicked()
+                    Toast.makeText(context, "Settings Clicked!", Toast.LENGTH_SHORT).show()
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp)
+                    .size(48.dp) 
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = AppCardBlue,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }
@@ -478,7 +504,7 @@ fun CreateEditTaskDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 val timeText = String.format("%02d:%02d", selectedHour, selectedMinute)
-                val context = LocalContext.current
+//                val context = LocalContext.current
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -730,6 +756,7 @@ fun TaskScreenPreview() {
             tasks = emptyList(), // Provide an empty list for the initial preview state
             householdMembers = emptyList(), // Provide an empty list for the initial preview state
             onBackClicked = {},
+            onSettingsClicked = {},
             onAddTask = {},
             onUpdateTask = {},
             onDeleteTask = {}
