@@ -19,4 +19,10 @@ interface PersonDao {
 
     @Query("SELECT * FROM people WHERE name = :name AND householdId = :householdId LIMIT 1")
     suspend fun getPersonByNameAndHouseholdId(name: String, householdId: Int): Person?
+
+    @Query("SELECT * FROM people WHERE firebaseId = :firebaseId LIMIT 1")
+    suspend fun getPersonByFirebaseId(firebaseId: String): Person?
+
+    @Query("SELECT * FROM people WHERE id = :personId LIMIT 1")
+    suspend fun getPersonById(personId: Int): Person?
 }

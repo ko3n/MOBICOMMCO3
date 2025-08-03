@@ -31,4 +31,5 @@ interface TaskDao {
 
     @Query("SELECT * FROM tasks WHERE householdId = :householdId AND status != 'COMPLETED'")
     suspend fun getAllIncompleteTasksForHousehold(householdId: Int): List<Task>
+
 }

@@ -16,10 +16,10 @@ class TaskRepo(context: Context) {
         val description: String? = null,
         val dueDateMillis: Long? = null,
         val priority: TaskPriority = TaskPriority.LOW,
-        val assigneeId: Int? = null,
+        val assigneeId: String? = null,
         val isRecurring: Boolean = false,
         val recurringInterval: RecurringInterval? = null,
-        val householdId: String = "", // Firebase householdId (String)
+        val householdId: String = "",
         val firebaseId: String? = null,
         val status: TaskStatus = TaskStatus.UPCOMING
     )
@@ -51,12 +51,18 @@ class TaskRepo(context: Context) {
         val localTask = taskDao.getTaskById(roomId.toInt())
         if (localTask != null) {
             try {
+                // Find the person by Room id to get their firebaseId
+                var assigneeFirebaseId: String? = null
+                if (localTask.assigneeId != null) {
+                    val localPerson = personDao.getPersonById(localTask.assigneeId!!)
+                    assigneeFirebaseId = localPerson?.firebaseId
+                }
                 val firebaseTask = FirebaseTaskDTO(
                     title = localTask.title,
                     description = localTask.description,
                     dueDateMillis = localTask.dueDateMillis,
                     priority = localTask.priority,
-                    assigneeId = localTask.assigneeId,
+                    assigneeId = assigneeFirebaseId, // <-- MUST be Firebase id (String)
                     isRecurring = localTask.isRecurring,
                     recurringInterval = localTask.recurringInterval,
                     householdId = householdFirebaseId,
@@ -107,17 +113,27 @@ class TaskRepo(context: Context) {
 
     // Sync tasks from Firebase to Room for a household
     suspend fun syncTasksForHouseholdFromCloud(household: Household) {
+        Log.d("SyncDebug", "Syncing tasks for household firebaseId: ${household.firebaseId}")
         val tasksFromFirebase = firebaseTaskRepo.getTasksForHousehold(household.firebaseId ?: return)
+        Log.d("SyncDebug", "Fetched ${tasksFromFirebase.size} tasks from Firebase")
         for (dto in tasksFromFirebase) {
+            Log.d("SyncDebug", "Processing Firebase task: ${dto.title} (firebaseId=${dto.firebaseId}, householdId=${dto.householdId}, assigneeId=${dto.assigneeId})")
             val localHousehold = householdDao.findByFirebaseId(dto.householdId)
             val mappedHouseholdId = localHousehold?.id ?: household.id
+
+            var mappedAssigneeId: Int? = null
+            if (dto.assigneeId != null) {
+                val localPerson = personDao.getPersonByFirebaseId(dto.assigneeId.toString())
+                mappedAssigneeId = localPerson?.id
+            }
+
             val roomTask = Task(
                 id = 0, // Room will auto-assign ID if inserting
                 title = dto.title,
                 description = dto.description,
                 dueDateMillis = dto.dueDateMillis,
                 priority = dto.priority,
-                assigneeId = dto.assigneeId,
+                assigneeId = mappedAssigneeId,
                 isRecurring = dto.isRecurring,
                 recurringInterval = dto.recurringInterval,
                 householdId = mappedHouseholdId,
@@ -125,6 +141,7 @@ class TaskRepo(context: Context) {
                 firebaseHouseholdId = dto.householdId,
                 status = dto.status
             )
+
             val local = taskDao.getTaskByFirebaseId(dto.firebaseId ?: "")
             if (local == null) {
                 // Only insert if not present
@@ -135,7 +152,7 @@ class TaskRepo(context: Context) {
                     description = dto.description,
                     dueDateMillis = dto.dueDateMillis,
                     priority = dto.priority,
-                    assigneeId = dto.assigneeId,
+                    assigneeId = mappedAssigneeId,
                     isRecurring = dto.isRecurring,
                     recurringInterval = dto.recurringInterval,
                     status = dto.status

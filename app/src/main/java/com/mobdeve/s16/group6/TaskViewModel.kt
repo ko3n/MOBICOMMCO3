@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.mobdeve.s16.group6.data.*
 import com.mobdeve.s16.group6.reminders.ReminderScheduler
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,6 +35,9 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _taskStatusFilter = MutableStateFlow<TaskStatus?>(null)
     open val taskStatusFilter: StateFlow<TaskStatus?> = _taskStatusFilter
+
+    private var tasksCollectionJob: Job? = null
+    private var membersCollectionJob: Job? = null
 
     open val filteredTasks: StateFlow<List<Task>> = tasks
         .combine(_taskStatusFilter) { tasks, statusFilter ->
@@ -109,17 +113,19 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
                 currentPersonId = personId
                 Log.d(TAG, "Household found: ID=${it.id}, Name=${it.name}. Starting sync and data collection.")
 
-                // 1. Sync tasks from Firebase to Room before collecting local tasks
                 syncTasksFromFirebaseToRoom(it)
 
-                // 2. Collect local tasks and members
-                launch {
+                // CANCEL previous jobs if they exist
+                tasksCollectionJob?.cancel()
+                membersCollectionJob?.cancel()
+
+                tasksCollectionJob = launch {
                     taskRepo.getTasksForPerson(personId, it.id).collectLatest { taskList ->
                         _tasks.value = taskList
                         Log.d(TAG, "Tasks collected: ${taskList.size} tasks for personId $personId, householdId ${it.id}")
                     }
                 }
-                launch {
+                membersCollectionJob = launch {
                     taskRepo.getAllPeopleForHousehold(it.id).collectLatest { members ->
                         _householdMembers.value = members
                         Log.d(TAG, "Household members collected: ${members.size} members for householdId ${it.id}")

@@ -639,7 +639,7 @@ fun CreateEditTaskDialog(
                         value = "Assignee: $currentAssigneeName",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Assignee (Optional)", color = Color.Gray) },
+                        label = { Text("Assignee", color = Color.Gray) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor(),
@@ -654,18 +654,6 @@ fun CreateEditTaskDialog(
                         expanded = expandedAssignee,
                         onDismissRequest = { expandedAssignee = false }
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("None") },
-                            onClick = {
-                                selectedAssigneeId = null
-                                expandedAssignee = false
-                            }
-                        )
-                        HorizontalDivider(
-                            Modifier,
-                            DividerDefaults.Thickness,
-                            DividerDefaults.color
-                        )
                         householdMembers.forEach { person ->
                             DropdownMenuItem(
                                 text = { Text(person.name) },
