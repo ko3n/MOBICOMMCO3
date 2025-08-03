@@ -43,11 +43,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _notificationsEnabled.value = isEnabled
         settingsManager.saveNotificationPreference(isEnabled)
 
-        if (!isEnabled) {
-            // If the user just turned notifications OFF,
-            // we need to cancel all previously scheduled reminders for their household.
-            cancelAllScheduledReminders()
-        }
+//        if (!isEnabled) {
+//            cancelAllScheduledReminders()
+//        }
     }
 
     private fun cancelAllScheduledReminders() {
