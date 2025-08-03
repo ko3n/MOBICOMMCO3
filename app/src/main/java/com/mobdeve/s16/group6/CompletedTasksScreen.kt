@@ -223,9 +223,8 @@ fun CompletedTaskItem(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Info row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+            Column(
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = "Completed",
@@ -233,12 +232,14 @@ fun CompletedTaskItem(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 dueDateString?.let {
                     Text(
-                        text = "Done: $it",
+                        text = "Due Date: $it",
                         color = AppTextBlack,
                         fontSize = 14.sp
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
                 Text(
                     text = "By: $assigneeName",
