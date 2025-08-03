@@ -216,7 +216,7 @@ fun PeopleTab(
 fun PersonItem(person: Person, onPersonClick: (Person) -> Unit) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = AppLightBlue),
+        colors = CardDefaults.cardColors(containerColor = AppCardBlue),
         modifier = Modifier.fillMaxWidth(0.8f).height(50.dp).clickable { onPersonClick(person) }
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
