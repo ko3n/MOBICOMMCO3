@@ -42,7 +42,7 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
     open val filteredTasks: StateFlow<List<Task>> = tasks
         .combine(_taskStatusFilter) { tasks, statusFilter ->
             statusFilter?.let { filter ->
-                tasks.filter { it.status == filter }
+                tasks.filter { calculateStatus(it) == filter }
             } ?: tasks
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
