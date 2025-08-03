@@ -118,7 +118,18 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // Determine start destination based on onboarding flag
-                val startDest = if (hasCompletedOnboarding(context)) "setup" else "onboarding1"
+//                val startDest = if (hasCompletedOnboarding(context)) "setup" else "onboarding1"
+                //remember me version of startDest
+                var startDest by remember { mutableStateOf("setup") }
+                LaunchedEffect(Unit) {
+                    if (!hasCompletedOnboarding(context)) {
+                        startDest = "onboarding1"
+                    } else {
+                        authViewModel.attemptAutoLogin { success ->
+                            startDest = if (success) "home" else "setup"
+                        }
+                    }
+                }
 
                 NavHost(navController = navController, startDestination = startDest) {
                     composable("onboarding1") {

@@ -1,6 +1,7 @@
 package com.mobdeve.s16.group6
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mobdeve.s16.group6.data.Household
@@ -29,6 +30,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentHousehold = MutableStateFlow<Household?>(null)
     val currentHousehold: StateFlow<Household?> = _currentHousehold.asStateFlow()
 
+    //remember me
+    private val prefs = application.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+
     fun login(householdName: String, password: String, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             _loginErrorMessage.value = null
@@ -44,6 +48,13 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
                 _isAuthenticated.value = true
                 _currentHousehold.value = updatedHousehold
+
+                //remember me
+                prefs.edit()
+                    .putString("last_household_name", household.name)
+                    .putString("last_household_password", password)
+                    .apply()
+
                 onComplete(true)
             } else {
                 _loginErrorMessage.value = "Invalid household name or password."
@@ -88,6 +99,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logout() {
         viewModelScope.launch {
+            prefs.edit().clear().apply()
             _isAuthenticated.value = false
             _currentHousehold.value = null
         }
@@ -102,5 +114,17 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearSignupError() {
         _signupErrorMessage.value = null
+    }
+
+    //remember me
+    fun attemptAutoLogin(onComplete: (Boolean) -> Unit) {
+        val savedName = prefs.getString("last_household_name", null)
+        val savedPassword = prefs.getString("last_household_password", null)
+
+        if (!savedName.isNullOrBlank() && !savedPassword.isNullOrBlank()) {
+            login(savedName, savedPassword, onComplete)
+        } else {
+            onComplete(false)
+        }
     }
 }
