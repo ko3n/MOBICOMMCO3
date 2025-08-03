@@ -13,13 +13,14 @@ import androidx.room.ForeignKey
         childColumns = ["householdId"],
         onDelete = ForeignKey.CASCADE
     )],
-    indices = [androidx.room.Index(value = ["name", "householdId"], unique = true)] // Ensure unique name per household
+    indices = [androidx.room.Index(value = ["name", "householdId"], unique = true)]
 )
 data class Person(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    @ColumnInfo(name = "householdId") var householdId: Int, // Link to the Household
-    var firebaseId: String? = null
+    @ColumnInfo(name = "householdId") var householdId: Int,
+    var firebaseId: String? = null,
+    var firebaseHouseholdId: String? = null
 ){
     constructor(): this(0, "", 0, null)
 }

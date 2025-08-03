@@ -1,23 +1,22 @@
 package com.mobdeve.s16.group6.data
 
+import android.content.Context
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.database
-import com.google.firebase.Firebase
 import kotlinx.coroutines.tasks.await
 
-class FirebaseTaskRepo {
+class FirebaseTaskRepo(context: Context) {
 
-    private val database: FirebaseDatabase = Firebase.database
+    private val database: FirebaseDatabase = FirebaseDatabase.getInstance()
     private val tasksRef: DatabaseReference = database.getReference("tasks")
 
-    suspend fun addTask(task: Task): String? {
+    suspend fun addTask(firebaseTask: TaskRepo.FirebaseTaskDTO): String? {
         return try {
             val newTaskRef = tasksRef.push()
             val firebaseId = newTaskRef.key
             if (firebaseId != null) {
-                task.firebaseId = firebaseId
-                newTaskRef.setValue(task).await()
+                val taskForUpload = firebaseTask.copy(firebaseId = firebaseId)
+                newTaskRef.setValue(taskForUpload).await()
             }
             firebaseId
         } catch (e: Exception) {
@@ -29,7 +28,7 @@ class FirebaseTaskRepo {
     suspend fun updateTask(task: Task): Boolean {
         return try {
             if (task.firebaseId == null) {
-                return false // Cannot update without a Firebase ID
+                return false
             }
             tasksRef.child(task.firebaseId!!).setValue(task).await()
             true
@@ -39,25 +38,23 @@ class FirebaseTaskRepo {
         }
     }
 
-    suspend fun deleteTask(firebaseId: String): Boolean {
-        return try {
+    suspend fun deleteTask(firebaseId: String) {
+        try {
             tasksRef.child(firebaseId).removeValue().await()
-            true
         } catch (e: Exception) {
             e.printStackTrace()
-            false
         }
     }
 
-    suspend fun getTasksForHousehold(householdId: String): List<Task> {
+    // Always deserialize into DTO, not Room model!
+    suspend fun getTasksForHousehold(householdId: String): List<TaskRepo.FirebaseTaskDTO> {
         return try {
             val snapshot = tasksRef.orderByChild("householdId").equalTo(householdId).get().await()
-            val tasksList = mutableListOf<Task>()
+            val tasksList = mutableListOf<TaskRepo.FirebaseTaskDTO>()
             for (child in snapshot.children) {
-                val task = child.getValue(Task::class.java)
-                if (task != null) {
-                    task.firebaseId = child.key
-                    tasksList.add(task)
+                val dto = child.getValue(TaskRepo.FirebaseTaskDTO::class.java)
+                if (dto != null) {
+                    tasksList.add(dto.copy(firebaseId = child.key))
                 }
             }
             tasksList

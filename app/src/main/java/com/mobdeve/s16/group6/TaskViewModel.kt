@@ -105,6 +105,14 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
         viewModelScope.launch {
+            val household = householdDao.getHouseholdById(currentHouseholdId!!)
+            val firebaseHouseholdId = household?.firebaseId
+            if (firebaseHouseholdId == null) {
+                Log.e(TAG, "Cannot add task: Household not synced to Firebase!")
+                Toast.makeText(appCtx, "Error: Household not synced to cloud.", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
             val newTask = Task(
                 title = title,
                 description = description,
@@ -117,23 +125,10 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
             )
             Log.d(TAG, "Attempting to add task: $newTask")
             try {
-                val taskId = taskRepo.addTask(newTask).toInt()
-
-                //debug
-//                val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-//                val formattedTime = formatter.format(Date(newTask.dueDateMillis ?: 0L))
-//                Log.d(TAG, "Scheduling reminder for task ID=$taskId at $formattedTime (millis=${newTask.dueDateMillis})")
+                val taskId = taskRepo.addTask(newTask, firebaseHouseholdId).toInt() // <-- pass firebase id here!
 
                 ReminderScheduler.scheduleFullReminderSet(appCtx, taskId, newTask.dueDateMillis ?: return@launch)
                 Log.d(TAG, "Task added and reminder scheduled, taskID = $taskId.")
-
-                // debug
-//                ReminderScheduler.scheduleReminder(
-//                    context = appCtx,
-//                    taskId = taskId,
-//                    dueTimeMillis = newTask.dueDateMillis -  System.currentTimeMillis()
-//                )
-
             } catch (e: Exception) {
                 Log.e(TAG, "Error adding task: ${e.message}", e)
                 Toast.makeText(appCtx, "Failed to add task: ${e.message}", Toast.LENGTH_LONG).show()

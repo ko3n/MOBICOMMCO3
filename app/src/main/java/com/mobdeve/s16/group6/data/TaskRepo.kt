@@ -3,27 +3,65 @@ package com.mobdeve.s16.group6.data
 import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 
 class TaskRepo(context: Context) {
     private val db = AppDatabase.getInstance(context)
     private val taskDao = db.taskDao()
     private val personDao = db.personDao()
-    private val firebaseTaskRepo = FirebaseTaskRepo()
+    private val householdDao = db.householdDao()
+    private val firebaseTaskRepo = FirebaseTaskRepo(context)
 
-    suspend fun addTask(task: Task): Long {
+    data class FirebaseTaskDTO(
+        val title: String = "",
+        val description: String? = null,
+        val dueDateMillis: Long? = null,
+        val priority: TaskPriority = TaskPriority.LOW,
+        val assigneeId: Int? = null,
+        val isRecurring: Boolean = false,
+        val recurringInterval: RecurringInterval? = null,
+        val householdId: String = "", // Firebase householdId (String)
+        val firebaseId: String? = null,
+        val status: TaskStatus = TaskStatus.UPCOMING
+    )
+
+    // Local Room queries
+    fun getTasksForPerson(personId: Int, householdId: Int): Flow<List<Task>> {
+        return taskDao.getTasksForPerson(personId, householdId)
+    }
+
+    fun getTasksForHousehold(householdId: Int): Flow<List<Task>> {
+        return taskDao.getAllTasksForHousehold(householdId)
+    }
+
+    fun getAllPeopleForHousehold(householdId: Int): Flow<List<Person>> {
+        return personDao.getPeopleForHousehold(householdId)
+    }
+
+    // Add a new task (local + cloud)
+    suspend fun addTask(task: Task, householdFirebaseId: String): Long {
         val finalTask = task.copy(status = calculateStatus(task))
         val roomId = taskDao.insert(finalTask)
         Log.d("TaskRepo", "Task inserted into Room with ID: $roomId")
 
         val localTask = taskDao.getTaskById(roomId.toInt())
         if (localTask != null) {
-            // Sync to Firebase
             try {
-                val firebaseId = firebaseTaskRepo.addTask(localTask)
+                val firebaseTask = FirebaseTaskDTO(
+                    title = localTask.title,
+                    description = localTask.description,
+                    dueDateMillis = localTask.dueDateMillis,
+                    priority = localTask.priority,
+                    assigneeId = localTask.assigneeId,
+                    isRecurring = localTask.isRecurring,
+                    recurringInterval = localTask.recurringInterval,
+                    householdId = householdFirebaseId,
+                    firebaseId = localTask.firebaseId,
+                    status = localTask.status
+                )
+                val firebaseId = firebaseTaskRepo.addTask(firebaseTask)
                 if (firebaseId != null) {
-
                     localTask.firebaseId = firebaseId
+                    localTask.firebaseHouseholdId = householdFirebaseId
                     taskDao.update(localTask)
                     Log.d("TaskRepo", "Task synced to Firebase and local record updated with ID: $firebaseId")
                 } else {
@@ -38,63 +76,56 @@ class TaskRepo(context: Context) {
         return roomId
     }
 
+    // Update a task (local+cloud)
     suspend fun updateTask(task: Task) {
-        val updatedTask = if (task.status != TaskStatus.COMPLETED)
-            task.copy(status = calculateStatus(task))
-        else task
-
-        try {
-            taskDao.update(updatedTask)
-            Log.d("TaskRepo", "Task updated in Room: ${updatedTask.title}")
-
-            if (updatedTask.firebaseId != null) {
-                firebaseTaskRepo.updateTask(updatedTask)
-                Log.d("TaskRepo", "Task updated in Firebase: ${updatedTask.firebaseId}")
-            } else {
-                Log.w("TaskRepo", "Task has no Firebase ID, skipping Firebase update.")
-            }
-        } catch (e: Exception) {
-            Log.e("TaskRepo", "Error updating task locally or in Firebase: ${e.message}", e)
+        val success = firebaseTaskRepo.updateTask(task)
+        if (success) {
+            taskDao.update(task)
+            Log.d("TaskRepo", "Task updated in Firebase and Room.")
+        } else {
+            Log.e("TaskRepo", "Failed to update task in Firebase.")
         }
     }
 
+    // Delete a task (local+cloud)
     suspend fun deleteTask(task: Task) {
-        try {
-            taskDao.delete(task)
-            Log.d("TaskRepo", "Task deleted from Room: ${task.title}")
-
-            if (task.firebaseId != null) {
-                firebaseTaskRepo.deleteTask(task.firebaseId!!)
-                Log.d("TaskRepo", "Task deleted from Firebase: ${task.firebaseId}")
-            } else {
-                Log.w("TaskRepo", "Task has no Firebase ID, skipping Firebase delete.")
+        val firebaseId = task.firebaseId
+        if (firebaseId != null) {
+            try {
+                firebaseTaskRepo.deleteTask(firebaseId)
+            } catch (e: Exception) {
+                Log.e("TaskRepo", "Error deleting task from Firebase: ${e.message}", e)
             }
-        } catch (e: Exception) {
-            Log.e("TaskRepo", "Error deleting task locally or in Firebase: ${e.message}", e)
         }
+        taskDao.delete(task)
     }
 
-    fun getTasksForPerson(personId: Int, householdId: Int): Flow<List<Task>> {
-        return taskDao.getTasksForPerson(personId, householdId)
-    }
-
-    fun getTasksForHousehold(householdId: Int): Flow<List<Task>> {
-        return taskDao.getTasksForHousehold(householdId)
-    }
-    fun getAllPeopleForHousehold(householdId: Int): Flow<List<Person>> {
-        return personDao.getPeopleForHousehold(householdId)
-    }
-
-
+    // Sync tasks from Firebase to Room for a household
     suspend fun syncTasksForHouseholdFromCloud(household: Household) {
         val tasksFromFirebase = firebaseTaskRepo.getTasksForHousehold(household.firebaseId ?: return)
-        val localTasks = taskDao.getAllTasksForHousehold(household.id).first()
-        for (task in tasksFromFirebase) {
-            task.householdId = household.id // map to local Room household id
-            if (!localTasks.any { it.firebaseId == task.firebaseId }) {
-                taskDao.insert(task)
+        Log.d("TaskRepo", "Syncing tasks for household ${household.name} (firebaseId=${household.firebaseId})")
+        for (dto in tasksFromFirebase) {
+            val localHousehold = householdDao.findByFirebaseId(dto.householdId)
+            val mappedHouseholdId = localHousehold?.id ?: household.id
+            val roomTask = Task(
+                id = 0,
+                title = dto.title,
+                description = dto.description,
+                dueDateMillis = dto.dueDateMillis,
+                priority = dto.priority,
+                assigneeId = dto.assigneeId,
+                isRecurring = dto.isRecurring,
+                recurringInterval = dto.recurringInterval,
+                householdId = mappedHouseholdId,
+                firebaseId = dto.firebaseId,
+                firebaseHouseholdId = dto.householdId,
+                status = dto.status
+            )
+            val local = taskDao.getTaskById(roomTask.id)
+            // You may want to check for duplicates by another criteria (e.g. title+dueDate+householdId)
+            if (local == null) {
+                taskDao.insert(roomTask)
             }
         }
     }
-
 }

@@ -8,7 +8,13 @@ class PersonRepo(context: Context) {
     private val db = AppDatabase.getInstance(context)
     private val personDao = db.personDao()
     private val householdDao = db.householdDao()
-    private val firebasePersonRepo = FirebasePersonRepo() // Instantiate Firebase Person repo
+    private val firebasePersonRepo = FirebasePersonRepo()
+
+    data class FirebasePersonDTO(
+        val name: String = "",
+        val householdId: String = "",  // Firebase householdId (String)
+        val firebaseId: String? = null
+    )
 
     suspend fun addPerson(
         personName: String,
@@ -20,20 +26,26 @@ class PersonRepo(context: Context) {
             Log.e("PersonRepo", "Household not found for adding person: $householdName, $householdEmail")
             return false
         }
-
+        // Save locally with local householdId
         val person = Person(name = personName, householdId = household.id)
         val result = personDao.insert(person)
         if (result == -1L) {
             Log.d("PersonRepo", "Person insertion into Room ignored (e.g., duplicate name).")
             return false
         }
-
         val localPerson = personDao.getPersonByNameAndHouseholdId(personName, household.id)
-        if (localPerson != null) {
+        if (localPerson != null && household.firebaseId != null) {
             try {
-                val firebaseId = firebasePersonRepo.addPerson(localPerson)
+                // Upload with householdId set to firebaseId
+                val firebasePerson = FirebasePersonDTO(
+                    name = localPerson.name,
+                    householdId = household.firebaseId!!,
+                    firebaseId = localPerson.firebaseId
+                )
+                val firebaseId = firebasePersonRepo.addPerson(firebasePerson)
                 if (firebaseId != null) {
                     localPerson.firebaseId = firebaseId
+                    localPerson.firebaseHouseholdId = household.firebaseId
                     personDao.update(localPerson)
                 }
             } catch (e: Exception) {
@@ -48,10 +60,7 @@ class PersonRepo(context: Context) {
     }
 
     suspend fun updatePerson(person: Person): Boolean {
-        // First, update the record in Firebase.
         val success = firebasePersonRepo.updatePerson(person)
-
-        // If the Firebase update was successful, update the local database too.
         if (success) {
             personDao.update(person)
             Log.d("PersonRepo", "Person updated successfully in Firebase and Room.")
@@ -63,11 +72,21 @@ class PersonRepo(context: Context) {
 
     suspend fun syncPeopleForHouseholdFromCloud(household: Household) {
         val peopleFromFirebase = firebasePersonRepo.getPeopleForHousehold(household.firebaseId ?: return)
-        for (person in peopleFromFirebase) {
-            person.householdId = household.id // map to local Room household id
-            val local = personDao.getPersonByNameAndHouseholdId(person.name, household.id)
+        Log.d("PersonRepo", "Syncing people for household ${household.name} (firebaseId=${household.firebaseId})")
+        for (personDto in peopleFromFirebase) {
+            val firebaseHouseholdId = personDto.householdId
+            val localHousehold = householdDao.findByFirebaseId(firebaseHouseholdId)
+            val mappedHouseholdId = localHousehold?.id ?: household.id
+            val roomPerson = Person(
+                id = 0,
+                name = personDto.name,
+                householdId = mappedHouseholdId,
+                firebaseId = personDto.firebaseId,
+                firebaseHouseholdId = firebaseHouseholdId
+            )
+            val local = personDao.getPersonByNameAndHouseholdId(roomPerson.name, mappedHouseholdId)
             if (local == null) {
-                personDao.insert(person)
+                personDao.insert(roomPerson)
             }
         }
     }

@@ -18,4 +18,10 @@ interface HouseholdDao {
 
     @Query("SELECT * FROM households WHERE name = :name AND password = :password LIMIT 1")
     suspend fun authenticate(name: String, password: String): Household?
+
+    @Query("SELECT * FROM households WHERE id = :id LIMIT 1")
+    suspend fun getHouseholdById(id: Int): Household?
+
+    @Query("SELECT * FROM households WHERE firebaseId = :firebaseId LIMIT 1")
+    suspend fun findByFirebaseId(firebaseId: String): Household?
 }

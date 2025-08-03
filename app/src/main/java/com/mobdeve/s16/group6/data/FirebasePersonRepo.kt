@@ -11,13 +11,13 @@ class FirebasePersonRepo {
     private val database: FirebaseDatabase = Firebase.database
     private val peopleRef: DatabaseReference = database.getReference("people")
 
-    suspend fun addPerson(person: Person): String? {
+    suspend fun addPerson(firebasePerson: PersonRepo.FirebasePersonDTO): String? {
         return try {
             val newPersonRef = peopleRef.push()
             val firebaseId = newPersonRef.key
             if (firebaseId != null) {
-                person.firebaseId = firebaseId
-                newPersonRef.setValue(person).await()
+                val personForUpload = firebasePerson.copy(firebaseId = firebaseId)
+                newPersonRef.setValue(personForUpload).await()
             }
             firebaseId
         } catch (e: Exception) {
@@ -39,15 +39,14 @@ class FirebasePersonRepo {
         }
     }
 
-    suspend fun getPeopleForHousehold(householdId: String): List<Person> {
+    suspend fun getPeopleForHousehold(householdId: String): List<PersonRepo.FirebasePersonDTO> {
         return try {
             val snapshot = peopleRef.orderByChild("householdId").equalTo(householdId).get().await()
-            val peopleList = mutableListOf<Person>()
+            val peopleList = mutableListOf<PersonRepo.FirebasePersonDTO>()
             for (child in snapshot.children) {
-                val person = child.getValue(Person::class.java)
-                if (person != null) {
-                    person.firebaseId = child.key
-                    peopleList.add(person)
+                val dto = child.getValue(PersonRepo.FirebasePersonDTO::class.java)
+                if (dto != null) {
+                    peopleList.add(dto.copy(firebaseId = child.key))
                 }
             }
             peopleList
@@ -56,5 +55,4 @@ class FirebasePersonRepo {
             emptyList()
         }
     }
-
 }
