@@ -42,6 +42,54 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
             } ?: tasks
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    // post-firebase-sync feed logic
+    private val firebaseFeedRepo = FirebaseFeedRepo()
+    private val _feedEvents = MutableStateFlow<List<FeedEvent>>(emptyList())
+    val feedEvents: StateFlow<List<FeedEvent>> = _feedEvents.asStateFlow()
+
+    // pre-firebase-sync feed logic
+//    private val _feedEvents = MutableStateFlow<List<FeedEvent>>(emptyList())
+//    val feedEvents: StateFlow<List<FeedEvent>> = _feedEvents.asStateFlow()
+
+    fun pushFeedEvent(eventType: EventType, task: Task, userName: String) {
+        val now = System.currentTimeMillis()
+
+        val event = FeedEvent(
+            eventType = eventType,
+            taskTitle = task.title,
+            userName = userName,
+            timestamp = now
+        )
+
+        val existing = _feedEvents.value
+
+        val alreadyExists = existing.any {
+            it.eventType == event.eventType &&
+                    it.taskTitle == event.taskTitle &&
+                    it.userName == event.userName &&
+                    (now - it.timestamp) < 5000 // 5 seconds
+        }
+
+        if (!alreadyExists) {
+            _feedEvents.value = listOf(event) + existing
+            Log.d("FeedDebug", "Feed event pushed: ${event.eventType} - ${event.taskTitle} by ${event.userName}")
+
+            //firebase push for feed events
+            viewModelScope.launch {
+                val household = currentHouseholdId?.let { householdDao.getHouseholdById(it) }
+                val firebaseId = household?.firebaseId
+                if (!firebaseId.isNullOrBlank()) {
+                    firebaseFeedRepo.pushFeedEvent(firebaseId, event)
+                } else {
+                    Log.w("FeedDebug", "No firebaseId available for household — skipping feed upload")
+                }
+            }
+
+        } else {
+            Log.d("FeedDebug", "Duplicate feed event suppressed: ${event.taskTitle} by ${event.userName}")
+        }
+    }
+
     companion object {
         private const val TAG = "TaskViewModel"
     }
@@ -130,6 +178,10 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
                 val taskId = taskRepo.addTask(newTask, firebaseHouseholdId).toInt()
                 ReminderScheduler.scheduleFullReminderSet(appCtx, taskId, newTask.dueDateMillis ?: return@launch)
                 Log.d(TAG, "Task added and reminder scheduled, taskID = $taskId.")
+
+                val personName = _householdMembers.value.find { it.id == currentPersonId }?.name ?: "Someone"
+                pushFeedEvent(EventType.CREATED, newTask, personName)
+
             } catch (e: Exception) {
                 Log.e(TAG, "Error adding task: ${e.message}", e)
                 Toast.makeText(appCtx, "Failed to add task: ${e.message}", Toast.LENGTH_LONG).show()
@@ -140,7 +192,7 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
     /**
      * Updates an existing task in the database.
      */
-    fun updateTask(task: Task) {
+    fun updateTask(task: Task, pushToFeed: Boolean = true) {
         viewModelScope.launch {
             Log.d(TAG, "Attempting to update task: $task")
             try {
@@ -150,6 +202,14 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
                 ReminderScheduler.cancelReminder(appCtx, updatedTask.id)
                 ReminderScheduler.scheduleFullReminderSet(appCtx, updatedTask.id, updatedTask.dueDateMillis ?: return@launch)
                 Log.d(TAG, "Task updated and reminder rescheduled.")
+
+                val personName = _householdMembers.value.find { it.id == currentPersonId }?.name ?: "Someone"
+
+                //so completed tasks dont get fed twice
+                if(pushToFeed) {
+                    pushFeedEvent(EventType.MODIFIED, updatedTask, personName)
+                }
+
             } catch (e: Exception) {
                 Log.e(TAG, "Error updating task: ${e.message}", e)
                 Toast.makeText(appCtx, "Failed to update task: ${e.message}", Toast.LENGTH_LONG).show()
@@ -167,6 +227,10 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
                 ReminderScheduler.cancelReminder(appCtx, task.id)
                 taskRepo.deleteTask(task)
                 Log.d(TAG, "Task deleted and reminder removed.")
+
+                val personName = _householdMembers.value.find { it.id == currentPersonId }?.name ?: "Someone"
+                pushFeedEvent(EventType.DELETED, task, personName)
+
             } catch (e: Exception) {
                 Log.e(TAG, "Error deleting task: ${e.message}", e)
                 Toast.makeText(appCtx, "Failed to delete task: ${e.message}", Toast.LENGTH_LONG).show()
@@ -189,6 +253,15 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
 
                 // 1. Sync tasks from Firebase to Room before collecting local tasks
                 syncTasksFromFirebaseToRoom(it)
+
+                // gets feed updates from firebase
+                if (!it.firebaseId.isNullOrBlank()) {
+                    launch {
+                        val firebaseFeed = firebaseFeedRepo.fetchFeedOnce(household.firebaseId!!)
+                        Log.d(TAG, "One-time feed fetch loaded ${firebaseFeed.size} events")
+                        _feedEvents.value = firebaseFeed
+                    }
+                }
 
                 // 2. Collect all tasks for the household (not just one person)
                 launch {
@@ -229,11 +302,26 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
     fun markTaskCompleted(task: Task) {
         viewModelScope.launch {
             val completedTask = task.copy(status = TaskStatus.COMPLETED)
-            updateTask(completedTask)
+            updateTask(completedTask, false)
+
+            val personName = _householdMembers.value.find { it.id == currentPersonId }?.name ?: "Someone"
+            pushFeedEvent(EventType.COMPLETED, completedTask, personName)
+
         }
     }
 
     open fun setTaskStatusFilter(status: TaskStatus?) {
         _taskStatusFilter.value = status
+    }
+
+    fun loadFeedOnce(firebaseHouseholdId: String) {
+        viewModelScope.launch {
+            try {
+                val events = FirebaseFeedRepo().fetchFeedOnce(firebaseHouseholdId)
+                _feedEvents.value = events
+            } catch (e: Exception) {
+                Log.e("TaskViewModel", "Failed to load feed from Firebase: ${e.message}", e)
+            }
+        }
     }
 }
