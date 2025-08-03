@@ -40,8 +40,6 @@ fun SettingsScreen(
 
     var showLogoutDialog by remember { mutableStateOf(false) } //logout confirmation
     var notificationsOn by remember { mutableStateOf(true) }
-    var addTasksOnTop by remember { mutableStateOf(true) }
-    var remindersOn by remember { mutableStateOf(true) }
     val isPersonSettings = !personFirebaseId.isNullOrEmpty()
 
     Scaffold(
@@ -69,10 +67,6 @@ fun SettingsScreen(
             }
 
             SettingSwitchItem(text = "Notifications", checked = notificationsOn, onCheckedChange = { notificationsOn = it })
-            HorizontalDivider()
-            SettingSwitchItem(text = "Add new tasks on top", checked = addTasksOnTop, onCheckedChange = { addTasksOnTop = it })
-            HorizontalDivider()
-            SettingSwitchItem(text = "Reminders", checked = remindersOn, onCheckedChange = { remindersOn = it })
             HorizontalDivider()
             // Completed Tasks row (replaces play sound)
             SettingClickableItem(

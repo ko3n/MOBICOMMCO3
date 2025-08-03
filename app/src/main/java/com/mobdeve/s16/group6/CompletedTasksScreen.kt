@@ -175,7 +175,6 @@ fun CompletedTasksScreen(
                     modifier = Modifier.fillMaxSize()
                 )
             }
-            
             */
         }
     }
