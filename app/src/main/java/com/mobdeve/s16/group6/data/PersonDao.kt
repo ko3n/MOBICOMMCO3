@@ -15,7 +15,7 @@ interface PersonDao {
     suspend fun delete(person: Person)
 
     @Query("SELECT * FROM people WHERE householdId = :householdId ORDER BY name ASC")
-    fun getPeopleForHousehold(householdId: Int): Flow<List<Person>> // Use Flow for observing changes
+    fun getPeopleForHousehold(householdId: Int): Flow<List<Person>>
 
     @Query("SELECT * FROM people WHERE name = :name AND householdId = :householdId LIMIT 1")
     suspend fun getPersonByNameAndHouseholdId(name: String, householdId: Int): Person?

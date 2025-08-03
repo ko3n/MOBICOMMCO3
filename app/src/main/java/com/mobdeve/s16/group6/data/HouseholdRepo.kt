@@ -8,11 +8,6 @@ class HouseholdRepo(context: Context) {
     private val dao = db.householdDao()
     private val firebaseRepo = FirebaseHouseholdRepo()
 
-    /**
-     * Registers a new household.
-     * Inserts into local Room database first, then attempts to sync to Firebase.
-     * Updates the local record with the Firebase ID if sync is successful.
-     */
     suspend fun register(name: String, email: String, password: String): RegistrationResult {
         if (dao.findByNameOrEmail(name, email) != null) {
             Log.d("HouseholdRepo", "Registration failed: Duplicate name or email.")
@@ -44,11 +39,6 @@ class HouseholdRepo(context: Context) {
         return RegistrationResult.Success
     }
 
-    /**
-     * Authenticates a household against the local Room database.
-     * Synchronization of authentication itself is usually handled by Firebase Auth,
-     * but this method uses the local Room database for existing logic.
-     */
     suspend fun authenticateAndGetHousehold(name: String, password: String): Household? {
         return dao.authenticate(name, password)
     }

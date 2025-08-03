@@ -10,11 +10,6 @@ class PersonRepo(context: Context) {
     private val householdDao = db.householdDao()
     private val firebasePersonRepo = FirebasePersonRepo() // Instantiate Firebase Person repo
 
-    /**
-     * Adds a new person.
-     * Inserts into local Room database first, then attempts to sync to Firebase.
-     * Updates the local record with the Firebase ID if sync is successful.
-     */
     suspend fun addPerson(
         personName: String,
         householdName: String,
@@ -48,18 +43,10 @@ class PersonRepo(context: Context) {
         return true
     }
 
-    /**
-     * Provides a Flow of lists of Person objects for a given household ID from Room.
-     */
     fun getPeopleForCurrentHousehold(householdId: Int): Flow<List<Person>> {
         return personDao.getPeopleForHousehold(householdId)
     }
 
-    /**
-     * Updates a person's details in both Firebase and the local Room database.
-     * @param person The person object with updated information.
-     * @return True if the update was successful in Firebase.
-     */
     suspend fun updatePerson(person: Person): Boolean {
         // First, update the record in Firebase.
         val success = firebasePersonRepo.updatePerson(person)

@@ -10,11 +10,6 @@ class TaskRepo(context: Context) {
     private val personDao = db.personDao()
     private val firebaseTaskRepo = FirebaseTaskRepo()
 
-    /**
-     * Adds a new task.
-     * Inserts into local Room database first, then attempts to sync to Firebase.
-     * Updates the local record with the Firebase ID if sync is successful.
-     */
     suspend fun addTask(task: Task): Long {
         val finalTask = task.copy(status = calculateStatus(task))
         val roomId = taskDao.insert(finalTask)
@@ -42,10 +37,6 @@ class TaskRepo(context: Context) {
         return roomId
     }
 
-    /**
-     * Updates an existing task.
-     * Updates local Room database, then attempts to sync to Firebase.
-     */
     suspend fun updateTask(task: Task) {
         val updatedTask = if (task.status != TaskStatus.COMPLETED)
             task.copy(status = calculateStatus(task))
@@ -66,10 +57,6 @@ class TaskRepo(context: Context) {
         }
     }
 
-    /**
-     * Deletes a task.
-     * Deletes from local Room database, then attempts to sync to Firebase.
-     */
     suspend fun deleteTask(task: Task) {
         try {
             taskDao.delete(task)
@@ -86,24 +73,13 @@ class TaskRepo(context: Context) {
         }
     }
 
-    /**
-     * Provides a Flow of lists of Task objects for a specific person and household from Room.
-     */
     fun getTasksForPerson(personId: Int, householdId: Int): Flow<List<Task>> {
         return taskDao.getTasksForPerson(personId, householdId)
     }
 
-    /**
-     * Provides a Flow of lists of all Task objects for a specific household from Room.
-     */
     fun getTasksForHousehold(householdId: Int): Flow<List<Task>> {
         return taskDao.getTasksForHousehold(householdId)
     }
-
-    /**
-     * Provides a Flow of lists of all Person objects for a given household ID from Room.
-     * (This method seems to be misplaced in TaskRepo, but keeping it as per original for now)
-     */
     fun getAllPeopleForHousehold(householdId: Int): Flow<List<Person>> {
         return personDao.getPeopleForHousehold(householdId)
     }

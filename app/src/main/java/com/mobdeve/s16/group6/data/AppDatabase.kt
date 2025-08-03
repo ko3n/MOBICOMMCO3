@@ -20,7 +20,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java, "choreo-db"
                 )
-                    .fallbackToDestructiveMigration() // <--- Keep this for development
+                    .fallbackToDestructiveMigration()
                     .build().also { INSTANCE = it }
             }
     }
