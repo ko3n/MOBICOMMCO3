@@ -6,18 +6,16 @@ import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mobdeve.s16.group6.data.*
+import com.mobdeve.s16.group6.reminders.ReminderScheduler
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch //important
-import com.mobdeve.s16.group6.reminders.ReminderScheduler
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 open class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -63,7 +61,6 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
                 Log.d(TAG, "Household found: ID=${it.id}, Name=${it.name}. Starting data collection.")
 
                 // Launch each collection in its own coroutine to allow concurrent collection
-                // This fixes the issue where only the first collectLatest would run indefinitely.
                 launch {
                     taskRepo.getTasksForPerson(personId, it.id).collectLatest { taskList ->
                         _tasks.value = taskList
@@ -113,7 +110,7 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
                 return@launch
             }
 
-            val newTask = Task(
+            val baseTask = Task(
                 title = title,
                 description = description,
                 dueDateMillis = dueDateMillis,
@@ -123,10 +120,10 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
                 recurringInterval = recurringInterval,
                 householdId = currentHouseholdId!!
             )
+            val newTask = baseTask.copy(status = calculateStatus(baseTask))
             Log.d(TAG, "Attempting to add task: $newTask")
             try {
-                val taskId = taskRepo.addTask(newTask, firebaseHouseholdId).toInt() // <-- pass firebase id here!
-
+                val taskId = taskRepo.addTask(newTask, firebaseHouseholdId).toInt()
                 ReminderScheduler.scheduleFullReminderSet(appCtx, taskId, newTask.dueDateMillis ?: return@launch)
                 Log.d(TAG, "Task added and reminder scheduled, taskID = $taskId.")
             } catch (e: Exception) {
@@ -143,9 +140,11 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             Log.d(TAG, "Attempting to update task: $task")
             try {
-                taskRepo.updateTask(task)
-                ReminderScheduler.cancelReminder(appCtx, task.id)
-                ReminderScheduler.scheduleFullReminderSet(appCtx, task.id, task.dueDateMillis ?: return@launch)
+                val updatedStatus = calculateStatus(task)
+                val updatedTask = task.copy(status = updatedStatus)
+                taskRepo.updateTask(updatedTask)
+                ReminderScheduler.cancelReminder(appCtx, updatedTask.id)
+                ReminderScheduler.scheduleFullReminderSet(appCtx, updatedTask.id, updatedTask.dueDateMillis ?: return@launch)
                 Log.d(TAG, "Task updated and reminder rescheduled.")
             } catch (e: Exception) {
                 Log.e(TAG, "Error updating task: ${e.message}", e)
@@ -191,6 +190,21 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
                         _householdMembers.value = members
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Syncs tasks from Firebase to local Room database for the current household.
+     * This is the version that prevents duplicates and does not access Room on the main thread.
+     */
+    fun syncTasksFromFirebaseToRoom(household: Household) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                taskRepo.syncTasksForHouseholdFromCloud(household)
+                Log.d(TAG, "Firebase-to-Room sync finished.")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during Firebase-to-Room sync: ${e.message}", e)
             }
         }
     }

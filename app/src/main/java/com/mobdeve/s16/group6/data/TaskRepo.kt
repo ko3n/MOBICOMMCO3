@@ -103,12 +103,11 @@ class TaskRepo(context: Context) {
     // Sync tasks from Firebase to Room for a household
     suspend fun syncTasksForHouseholdFromCloud(household: Household) {
         val tasksFromFirebase = firebaseTaskRepo.getTasksForHousehold(household.firebaseId ?: return)
-        Log.d("TaskRepo", "Syncing tasks for household ${household.name} (firebaseId=${household.firebaseId})")
         for (dto in tasksFromFirebase) {
             val localHousehold = householdDao.findByFirebaseId(dto.householdId)
             val mappedHouseholdId = localHousehold?.id ?: household.id
             val roomTask = Task(
-                id = 0,
+                id = 0, // Room will auto-assign ID if inserting
                 title = dto.title,
                 description = dto.description,
                 dueDateMillis = dto.dueDateMillis,
@@ -121,9 +120,22 @@ class TaskRepo(context: Context) {
                 firebaseHouseholdId = dto.householdId,
                 status = dto.status
             )
-            val local = taskDao.getTaskById(roomTask.id)
+            val local = taskDao.getTaskByFirebaseId(dto.firebaseId ?: "")
             if (local == null) {
+                // Only insert if not present
                 taskDao.insert(roomTask)
+            } else {
+                val updatedTask = local.copy(
+                    title = dto.title,
+                    description = dto.description,
+                    dueDateMillis = dto.dueDateMillis,
+                    priority = dto.priority,
+                    assigneeId = dto.assigneeId,
+                    isRecurring = dto.isRecurring,
+                    recurringInterval = dto.recurringInterval,
+                    status = dto.status
+                )
+                taskDao.update(updatedTask)
             }
         }
     }
