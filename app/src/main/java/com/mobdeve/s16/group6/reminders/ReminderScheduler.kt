@@ -53,11 +53,11 @@ object ReminderScheduler {
 
     fun scheduleFullReminderSet(context: Context, taskId: Int, dueTimeMillis: Long) {
         val settingsManager = SettingsManager(context)
-        if (!settingsManager.getNotificationPreference()) {
-
-            Log.d("ReminderScheduler", "Notifications are disabled in settings. Skipping reminder scheduling for task ID $taskId.")
-            return
-        }
+//        if (!settingsManager.getNotificationPreference()) {
+//
+//            Log.d("ReminderScheduler", "Notifications are disabled in settings. Skipping reminder scheduling for task ID $taskId.")
+//            return
+//        }
         Log.d("ReminderScheduler", "Notifications are enabled. Proceeding with scheduling for task ID $taskId.")
         //debug reminder
 //        scheduleReminder(context, taskId, System.currentTimeMillis() + 15_000L, "due15s")
