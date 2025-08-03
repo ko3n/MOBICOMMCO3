@@ -37,6 +37,11 @@ class TaskRepo(context: Context) {
         return personDao.getPeopleForHousehold(householdId)
     }
 
+    suspend fun getAllIncompleteTasksForHousehold(householdId: Int): List<Task> {
+        return taskDao.getAllIncompleteTasksForHousehold(householdId)
+    }
+
+
     // Add a new task (local + cloud)
     suspend fun addTask(task: Task, householdFirebaseId: String): Long {
         val finalTask = task.copy(status = calculateStatus(task))

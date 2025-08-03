@@ -33,6 +33,7 @@ import androidx.core.content.ContextCompat
 import com.mobdeve.s16.group6.utils.NotificationUtils
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 // SharedPreferences helpers for onboarding flag
 fun hasCompletedOnboarding(context: Context): Boolean {
@@ -256,9 +257,19 @@ class MainActivity : ComponentActivity() {
                     ) { backStackEntry ->
                         val personId = backStackEntry.arguments?.getString("personId")
                         val isHouseholdSettings = personId == "household"
+                        val settingsViewModel: SettingsViewModel = viewModel()
+                        val authViewModel: AuthViewModel = viewModel()
+
+                        val currentHousehold by authViewModel.currentHousehold.collectAsState()
+                        LaunchedEffect(currentHousehold) {
+                            currentHousehold?.id?.let {
+                                settingsViewModel.initialize(it)
+                            }
+                        }
                         SettingsScreen(
                             personFirebaseId = if (isHouseholdSettings) null else personId,
                             peopleViewModel = peopleViewModel,
+                            settingsViewModel = settingsViewModel,
                             onBackClicked = { navController.popBackStack() },
                             onProfileClicked = {
                                 if (!isHouseholdSettings) {

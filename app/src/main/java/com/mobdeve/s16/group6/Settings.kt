@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mobdeve.s16.group6.ui.theme.AppDarkBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,6 +27,7 @@ import com.mobdeve.s16.group6.ui.theme.AppDarkBlue
 fun SettingsScreen(
     personFirebaseId: String?,
     peopleViewModel: PeopleViewModel,
+    settingsViewModel: SettingsViewModel = viewModel(),
     onBackClicked: () -> Unit,
     onProfileClicked: () -> Unit,
     onLogoutClicked: () -> Unit,
@@ -39,7 +41,7 @@ fun SettingsScreen(
     }
 
     var showLogoutDialog by remember { mutableStateOf(false) } //logout confirmation
-    var notificationsOn by remember { mutableStateOf(true) }
+    val notificationsOn by settingsViewModel.notificationsEnabled.collectAsState()
     val isPersonSettings = !personFirebaseId.isNullOrEmpty()
 
     Scaffold(
@@ -66,7 +68,9 @@ fun SettingsScreen(
                 HorizontalDivider()
             }
 
-            SettingSwitchItem(text = "Notifications", checked = notificationsOn, onCheckedChange = { notificationsOn = it })
+            SettingSwitchItem(text = "Notifications", checked = notificationsOn, onCheckedChange = { isEnabled ->
+                settingsViewModel.onNotificationsToggled(isEnabled)
+            })
             HorizontalDivider()
             // Completed Tasks row (replaces play sound)
             SettingClickableItem(

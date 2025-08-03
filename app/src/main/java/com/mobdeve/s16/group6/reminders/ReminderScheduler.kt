@@ -8,6 +8,7 @@ import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import com.mobdeve.s16.group6.utils.NotificationUtils
 import java.text.SimpleDateFormat
+import com.mobdeve.s16.group6.utils.SettingsManager
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -51,6 +52,13 @@ object ReminderScheduler {
     }
 
     fun scheduleFullReminderSet(context: Context, taskId: Int, dueTimeMillis: Long) {
+        val settingsManager = SettingsManager(context)
+        if (!settingsManager.getNotificationPreference()) {
+
+            Log.d("ReminderScheduler", "Notifications are disabled in settings. Skipping reminder scheduling for task ID $taskId.")
+            return
+        }
+        Log.d("ReminderScheduler", "Notifications are enabled. Proceeding with scheduling for task ID $taskId.")
         //debug reminder
 //        scheduleReminder(context, taskId, System.currentTimeMillis() + 15_000L, "due15s")
         scheduleReminder(context, taskId, dueTimeMillis, "due")

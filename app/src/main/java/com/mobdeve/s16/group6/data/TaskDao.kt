@@ -28,4 +28,7 @@ interface TaskDao {
 
     @Query("SELECT * FROM tasks WHERE householdId = :householdId")
     fun getTasksForHousehold(householdId: Int): Flow<List<Task>>
+
+    @Query("SELECT * FROM tasks WHERE householdId = :householdId AND status != 'COMPLETED'")
+    suspend fun getAllIncompleteTasksForHousehold(householdId: Int): List<Task>
 }
