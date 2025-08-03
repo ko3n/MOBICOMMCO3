@@ -257,10 +257,9 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
                 // gets feed updates from firebase
                 if (!it.firebaseId.isNullOrBlank()) {
                     launch {
-                        firebaseFeedRepo.listenToFeed(it.firebaseId!!).collectLatest { events ->
-                            Log.d(TAG, "Realtime feed collected: ${events.size} items")
-                            _feedEvents.value = events
-                        }
+                        val firebaseFeed = firebaseFeedRepo.fetchFeedOnce(household.firebaseId!!)
+                        Log.d(TAG, "One-time feed fetch loaded ${firebaseFeed.size} events")
+                        _feedEvents.value = firebaseFeed
                     }
                 }
 
@@ -313,5 +312,16 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
 
     open fun setTaskStatusFilter(status: TaskStatus?) {
         _taskStatusFilter.value = status
+    }
+
+    fun loadFeedOnce(firebaseHouseholdId: String) {
+        viewModelScope.launch {
+            try {
+                val events = FirebaseFeedRepo().fetchFeedOnce(firebaseHouseholdId)
+                _feedEvents.value = events
+            } catch (e: Exception) {
+                Log.e("TaskViewModel", "Failed to load feed from Firebase: ${e.message}", e)
+            }
+        }
     }
 }

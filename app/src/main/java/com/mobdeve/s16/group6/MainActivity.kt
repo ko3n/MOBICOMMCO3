@@ -76,6 +76,8 @@ class MainActivity : ComponentActivity() {
         requestNotificationPermission()
         createNotificationChannel()
 
+
+
         setContent {
             ChoreoUITheme {
                 val navController = rememberNavController()
@@ -107,6 +109,7 @@ class MainActivity : ComponentActivity() {
                     if (isAuthenticated && currentHousehold != null) {
                         currentHousehold?.let { household ->
                             peopleViewModel.setHousehold(household.name, household.email)
+                            taskViewModel.loadFeedOnce(household.firebaseId ?: return@let)
                         }
                         navController.navigate("home") {
                             popUpTo(navController.graph.startDestinationId) { inclusive = true }

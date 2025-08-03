@@ -4,6 +4,7 @@ import com.google.firebase.database.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.tasks.await
 
 class FirebaseFeedRepo {
 
@@ -33,5 +34,17 @@ class FirebaseFeedRepo {
 
     suspend fun pushFeedEvent(householdId: String, event: FeedEvent) {
         feedRoot.child(householdId).push().setValue(event)
+    }
+
+    suspend fun fetchFeedOnce(householdId: String): List<FeedEvent> {
+        return try {
+            val snapshot = feedRoot.child(householdId).get().await()
+            snapshot.children.mapNotNull {
+                it.getValue(FeedEvent::class.java)
+            }.sortedByDescending { it.timestamp }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
     }
 }
