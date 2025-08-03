@@ -3,6 +3,8 @@ package com.mobdeve.s16.group6
 import android.Manifest
 import android.os.Bundle
 import android.widget.Toast
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -31,6 +33,17 @@ import androidx.core.content.ContextCompat
 import com.mobdeve.s16.group6.utils.NotificationUtils
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+
+// SharedPreferences helpers for onboarding flag
+fun hasCompletedOnboarding(context: Context): Boolean {
+    val prefs: SharedPreferences = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+    return prefs.getBoolean("onboarding_completed", false)
+}
+
+fun setOnboardingCompleted(context: Context) {
+    val prefs: SharedPreferences = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+    prefs.edit().putBoolean("onboarding_completed", true).apply()
+}
 
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
@@ -99,31 +112,48 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                val navigateToSetup: () -> Unit = {
-                    navController.navigate("setup") {
-                        popUpTo("onboarding1") { inclusive = true }
-                    }
-                }
+                // Determine start destination based on onboarding flag
+                val startDest = if (hasCompletedOnboarding(context)) "setup" else "onboarding1"
 
-                NavHost(navController = navController, startDestination = "onboarding1") {
+                NavHost(navController = navController, startDestination = startDest) {
                     composable("onboarding1") {
                         Onboarding1(
                             onContinueClicked = { navController.navigate("onboarding2") },
-                            onSkipClicked = navigateToSetup
+                            onSkipClicked = {
+                                setOnboardingCompleted(context)
+                                navController.navigate("setup") {
+                                    popUpTo("onboarding1") { inclusive = true }
+                                }
+                            }
                         )
                     }
                     composable("onboarding2") {
                         Onboarding2(
                             onBackClicked = { navController.popBackStack() },
                             onContinueClicked = { navController.navigate("onboarding3") },
-                            onSkipClicked = navigateToSetup
+                            onSkipClicked = {
+                                setOnboardingCompleted(context)
+                                navController.navigate("setup") {
+                                    popUpTo("onboarding1") { inclusive = true }
+                                }
+                            }
                         )
                     }
                     composable("onboarding3") {
                         Onboarding3(
                             onBackClicked = { navController.popBackStack() },
-                            onGetStartedClicked = navigateToSetup,
-                            onSkipClicked = navigateToSetup
+                            onGetStartedClicked = {
+                                setOnboardingCompleted(context)
+                                navController.navigate("setup") {
+                                    popUpTo("onboarding1") { inclusive = true }
+                                }
+                            },
+                            onSkipClicked = {
+                                setOnboardingCompleted(context)
+                                navController.navigate("setup") {
+                                    popUpTo("onboarding1") { inclusive = true }
+                                }
+                            }
                         )
                     }
                     composable("setup") {
@@ -163,8 +193,6 @@ class MainActivity : ComponentActivity() {
                             navController = navController
                         )
                     }
-
-                    // Per-person Tasks
                     composable(
                         "tasks/{personId}/{firebaseId}/{personName}/{householdName}/{householdEmail}",
                         arguments = listOf(
@@ -190,7 +218,6 @@ class MainActivity : ComponentActivity() {
                                 personToEdit?.takeIf { it.firebaseId == firebaseId }?.name
                                     ?: personName
 
-                            // Initialize tasks for the person
                             LaunchedEffect(personId, householdName, householdEmail) {
                                 taskViewModel.initialize(personId, householdName, householdEmail)
                             }
@@ -223,35 +250,23 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-
-// --- The single, smart Settings Screen route ---
                     composable(
-                        "settings/{personId}", // The argument can now be a real firebaseId or the word "household"
+                        "settings/{personId}",
                         arguments = listOf(navArgument("personId") { type = NavType.StringType })
                     ) { backStackEntry ->
-                        // 1. Get the ID from the route.
                         val personId = backStackEntry.arguments?.getString("personId")
-
-                        // 2. Check if we are in "household" mode. This will be true if you navigated
-                        //    from the PeopleTab's settings button (which passes "household").
                         val isHouseholdSettings = personId == "household"
-
-                        // 3. Call the smart SettingsScreen
                         SettingsScreen(
-                            // Pass the real ID, or pass null if it's household settings.
-                            // The SettingsScreen will use this to show/hide the "Profile" button.
                             personFirebaseId = if (isHouseholdSettings) null else personId,
-
                             peopleViewModel = peopleViewModel,
                             onBackClicked = { navController.popBackStack() },
                             onProfileClicked = {
-                                // Only allow navigation to the edit screen if we are NOT in household mode.
                                 if (!isHouseholdSettings) {
                                     navController.navigate("editProfile")
                                 }
                             },
                             onCompletedTasksClicked = {
-                                navController.navigate("completedTasks")
+                                navController.navigate("completedtasks")
                             },
                             onLogoutClicked = {
                                 authViewModel.logout()
@@ -264,8 +279,6 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-
-                    // Edit Profile
                     composable("editProfile") {
                         val context = LocalContext.current
                         EditProfileScreen(
@@ -279,13 +292,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // Completed Tasks (household-wide)
                     composable("completedtasks") {
                         val currentHousehold by authViewModel.currentHousehold.collectAsState()
                         val allTasks by taskViewModel.allHouseholdTasks.collectAsState()
                         val householdMembers by taskViewModel.householdMembers.collectAsState()
 
-                        // Initialize household-wide tasks/members when entering this screen
                         LaunchedEffect(currentHousehold) {
                             currentHousehold?.let {
                                 taskViewModel.initializeForHousehold(it.name, it.email)
@@ -297,7 +308,7 @@ class MainActivity : ComponentActivity() {
                             tasks = allTasks,
                             householdMembers = householdMembers,
                             onBackClicked = { navController.popBackStack() },
-                            onSettingsClicked = { navController.navigate("settings") }
+                            onSettingsClicked = { navController.navigate("settings/household") }
                         )
                     }
                 }
