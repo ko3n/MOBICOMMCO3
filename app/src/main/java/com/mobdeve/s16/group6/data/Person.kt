@@ -18,6 +18,8 @@ import androidx.room.ForeignKey
 data class Person(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    @ColumnInfo(name = "householdId") val householdId: Int, // Link to the Household
+    @ColumnInfo(name = "householdId") var householdId: Int, // Link to the Household
     var firebaseId: String? = null
-)
+){
+    constructor(): this(0, "", 0, null)
+}

@@ -4,7 +4,7 @@ import androidx.room.*
 
 @Dao
 interface HouseholdDao {
-    @Insert(onConflict = OnConflictStrategy.ABORT)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(household: Household)
 
     @Update

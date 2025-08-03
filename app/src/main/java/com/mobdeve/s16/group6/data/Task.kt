@@ -30,10 +30,12 @@ data class Task(
     val assigneeId: Int? = null,
     val isRecurring: Boolean = false,
     val recurringInterval: RecurringInterval? = null,
-    val householdId: Int, // Link to the Household
+    var householdId: Int, // Link to the Household
     var firebaseId: String? = null,
     var status: TaskStatus = TaskStatus.UPCOMING
-)
+){
+    constructor(): this(0, "", null, null, TaskPriority.LOW, null, false, null, 0, null, TaskStatus.UPCOMING)
+}
 
 enum class TaskPriority {
     LOW, MEDIUM, HIGH

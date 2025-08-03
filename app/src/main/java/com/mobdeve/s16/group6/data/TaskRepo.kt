@@ -3,6 +3,7 @@ package com.mobdeve.s16.group6.data
 import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 
 class TaskRepo(context: Context) {
     private val db = AppDatabase.getInstance(context)
@@ -83,4 +84,17 @@ class TaskRepo(context: Context) {
     fun getAllPeopleForHousehold(householdId: Int): Flow<List<Person>> {
         return personDao.getPeopleForHousehold(householdId)
     }
+
+
+    suspend fun syncTasksForHouseholdFromCloud(household: Household) {
+        val tasksFromFirebase = firebaseTaskRepo.getTasksForHousehold(household.firebaseId ?: return)
+        val localTasks = taskDao.getAllTasksForHousehold(household.id).first()
+        for (task in tasksFromFirebase) {
+            task.householdId = household.id // map to local Room household id
+            if (!localTasks.any { it.firebaseId == task.firebaseId }) {
+                taskDao.insert(task)
+            }
+        }
+    }
+
 }

@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mobdeve.s16.group6.data.Household
 import com.mobdeve.s16.group6.data.HouseholdRepo
+import com.mobdeve.s16.group6.data.PersonRepo
+import com.mobdeve.s16.group6.data.TaskRepo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,10 +31,19 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun login(householdName: String, password: String, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             _loginErrorMessage.value = null
-            val household = householdRepo.authenticateAndGetHousehold(householdName, password)
+            var household = householdRepo.authenticateAndGetHousehold(householdName, password)
+
             if (household != null) {
+                // Always get the latest local household (with correct Room id)
+                val updatedHousehold = HouseholdRepo(getApplication()).getLocalHouseholdByNameOrEmail(household.name, household.email) ?: household
+
+                val personRepo = PersonRepo(getApplication())
+                val taskRepo = TaskRepo(getApplication())
+                personRepo.syncPeopleForHouseholdFromCloud(updatedHousehold)
+                taskRepo.syncTasksForHouseholdFromCloud(updatedHousehold)
+
                 _isAuthenticated.value = true
-                _currentHousehold.value = household
+                _currentHousehold.value = updatedHousehold
                 onComplete(true)
             } else {
                 _loginErrorMessage.value = "Invalid household name or password."

@@ -48,4 +48,22 @@ class FirebaseTaskRepo {
             false
         }
     }
+
+    suspend fun getTasksForHousehold(householdId: String): List<Task> {
+        return try {
+            val snapshot = tasksRef.orderByChild("householdId").equalTo(householdId).get().await()
+            val tasksList = mutableListOf<Task>()
+            for (child in snapshot.children) {
+                val task = child.getValue(Task::class.java)
+                if (task != null) {
+                    task.firebaseId = child.key
+                    tasksList.add(task)
+                }
+            }
+            tasksList
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
 }

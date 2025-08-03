@@ -27,4 +27,23 @@ class FirebaseHouseholdRepo {
         }
     }
 
+    suspend fun getHouseholdByNameOrEmail(name: String, email: String): Household? {
+        return try {
+            val snapshot = householdsRef.orderByChild("name").equalTo(name).get().await()
+            for (child in snapshot.children) {
+                val household = child.getValue(Household::class.java)
+                if (household != null && (household.name == name || household.email == email)) {
+                    household.firebaseId = child.key
+                    return household
+                }
+            }
+            null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+
+
 }

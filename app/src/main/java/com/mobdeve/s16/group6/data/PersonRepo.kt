@@ -60,4 +60,15 @@ class PersonRepo(context: Context) {
         }
         return success
     }
+
+    suspend fun syncPeopleForHouseholdFromCloud(household: Household) {
+        val peopleFromFirebase = firebasePersonRepo.getPeopleForHousehold(household.firebaseId ?: return)
+        for (person in peopleFromFirebase) {
+            person.householdId = household.id // map to local Room household id
+            val local = personDao.getPersonByNameAndHouseholdId(person.name, household.id)
+            if (local == null) {
+                personDao.insert(person)
+            }
+        }
+    }
 }

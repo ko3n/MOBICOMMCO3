@@ -17,4 +17,6 @@ data class Household(
     val email: String,
     val password: String, // need to hash
     var firebaseId: String? = null
-)
+){
+    constructor(): this(0, "", "", "", null)
+}

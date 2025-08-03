@@ -5,8 +5,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PersonDao {
-    @Insert(onConflict = OnConflictStrategy.IGNORE) // IGNORE will simply not insert if conflict (e.g., non-unique name)
-    suspend fun insert(person: Person): Long // Return rowId or -1 if ignored
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(person: Person): Long
 
     @Update
     suspend fun update(person: Person)

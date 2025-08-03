@@ -39,4 +39,22 @@ class FirebasePersonRepo {
         }
     }
 
+    suspend fun getPeopleForHousehold(householdId: String): List<Person> {
+        return try {
+            val snapshot = peopleRef.orderByChild("householdId").equalTo(householdId).get().await()
+            val peopleList = mutableListOf<Person>()
+            for (child in snapshot.children) {
+                val person = child.getValue(Person::class.java)
+                if (person != null) {
+                    person.firebaseId = child.key
+                    peopleList.add(person)
+                }
+            }
+            peopleList
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
 }

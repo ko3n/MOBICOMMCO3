@@ -40,7 +40,33 @@ class HouseholdRepo(context: Context) {
     }
 
     suspend fun authenticateAndGetHousehold(name: String, password: String): Household? {
-        return dao.authenticate(name, password)
+        var household = dao.authenticate(name, password)
+        if (household == null) {
+            // Try to import from Firebase if not found locally
+            household = syncHouseholdFromCloud(name, "")
+            // Check password after import
+            if (household != null && household.password == password) {
+                return household
+            }
+        }
+        return household
+    }
+
+    suspend fun syncHouseholdFromCloud(name: String, email: String): Household? {
+        val cloudHousehold = firebaseRepo.getHouseholdByNameOrEmail(name, email)
+        if (cloudHousehold != null) {
+            // Insert into Room DB if not exists
+            val local = dao.findByNameOrEmail(name, email)
+            if (local == null) {
+                dao.insert(cloudHousehold)
+                return cloudHousehold
+            }
+        }
+        return cloudHousehold
+    }
+
+    suspend fun getLocalHouseholdByNameOrEmail(name: String, email: String): Household? {
+        return dao.findByNameOrEmail(name, email)
     }
 
     sealed class RegistrationResult {
