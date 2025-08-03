@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,13 +28,13 @@ import com.mobdeve.s16.group6.ui.theme.ChoreoUITheme
 fun SettingsScreen(
     onBackClicked: () -> Unit,
     onProfileClicked: () -> Unit,
-    onLogoutClicked: () -> Unit
+    onLogoutClicked: () -> Unit,
+    onCompletedTasksClicked: () -> Unit // New callback for completed tasks
 ) {
     // State for the toggle switches
     var notificationsOn by remember { mutableStateOf(true) }
     var addTasksOnTop by remember { mutableStateOf(true) }
     var remindersOn by remember { mutableStateOf(true) }
-    var playSoundOn by remember { mutableStateOf(true) }
 
     Scaffold(
         topBar = {
@@ -96,11 +97,11 @@ fun SettingsScreen(
             )
             HorizontalDivider()
 
-            // Play completion sound Toggle
-            SettingSwitchItem(
-                text = "Play completion sound",
-                checked = playSoundOn,
-                onCheckedChange = { playSoundOn = it }
+            // Link to Completed Tasks Screen (replaces Play completion sound)
+            SettingClickableItem(
+                text = "View Completed Tasks",
+                icon = Icons.Default.ListAlt,
+                onClick = onCompletedTasksClicked
             )
             HorizontalDivider()
 
@@ -192,7 +193,6 @@ private fun SettingClickableItem(
     }
 }
 
-
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun SettingsScreenPreview() {
@@ -200,7 +200,8 @@ fun SettingsScreenPreview() {
         SettingsScreen(
             onBackClicked = {},
             onProfileClicked = {},
-            onLogoutClicked = {}
+            onLogoutClicked = {},
+            onCompletedTasksClicked = {}
         )
     }
 }

@@ -176,6 +176,30 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    private val _allHouseholdTasks = MutableStateFlow<List<Task>>(emptyList())
+    val allHouseholdTasks: StateFlow<List<Task>> = _allHouseholdTasks.asStateFlow()
+
+    fun initializeForHousehold(householdName: String, householdEmail: String) {
+        viewModelScope.launch {
+            val household = householdDao.findByNameOrEmail(householdName, householdEmail)
+            household?.let {
+                currentHouseholdId = it.id
+                // Collect all tasks for the household (not just one person)
+                launch {
+                    taskRepo.getTasksForHousehold(it.id).collectLatest { taskList ->
+                        _allHouseholdTasks.value = taskList
+                    }
+                }
+                // Members as before
+                launch {
+                    taskRepo.getAllPeopleForHousehold(it.id).collectLatest { members ->
+                        _householdMembers.value = members
+                    }
+                }
+            }
+        }
+    }
+
     fun markTaskCompleted(task: Task) {
         viewModelScope.launch {
             val completedTask = task.copy(status = TaskStatus.COMPLETED)

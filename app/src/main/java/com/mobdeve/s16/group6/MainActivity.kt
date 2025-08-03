@@ -1,6 +1,7 @@
 package com.mobdeve.s16.group6
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -29,10 +30,6 @@ import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.mobdeve.s16.group6.utils.NotificationUtils
-import java.util.concurrent.TimeUnit
-
-
-import com.mobdeve.s16.group6.SettingsScreen
 
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
@@ -57,6 +54,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    @SuppressLint("ComposableDestinationInComposeScope")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -140,9 +138,8 @@ class MainActivity : ComponentActivity() {
                                 authViewModel.login(householdName, password) { success ->
                                     // Logic handled by LaunchedEffect
                                 }
-                            },
-
-                            )
+                            }
+                        )
                     }
                     composable("signup") {
                         SignUpScreen(
@@ -214,7 +211,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-
                     composable("settings") {
                         SettingsScreen(
                             onBackClicked = { navController.popBackStack() },
@@ -222,14 +218,15 @@ class MainActivity : ComponentActivity() {
                             onLogoutClicked = {
                                 authViewModel.logout()
                                 navController.navigate("setup") {
-                                    // Clear the entire back stack
                                     popUpTo(navController.graph.startDestinationId) { inclusive = true }
                                 }
+                            },
+                            onCompletedTasksClicked = {
+                                navController.navigate("completedtasks")
                             }
                         )
                     }
 
-                    // Add a placeholder for the profile screen
                     composable("profile") {
                         Column(
                             modifier = Modifier.fillMaxSize(),
@@ -242,22 +239,44 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+
+                    composable("completedtasks") {
+                        val currentHousehold by authViewModel.currentHousehold.collectAsState()
+                        val allTasks by taskViewModel.allHouseholdTasks.collectAsState()
+                        val householdMembers by taskViewModel.householdMembers.collectAsState()
+
+                        // Initialize for household when entering this screen
+                        LaunchedEffect(currentHousehold) {
+                            currentHousehold?.let {
+                                taskViewModel.initializeForHousehold(it.name, it.email)
+                            }
+                        }
+
+                        CompletedTasksScreen(
+                            personName = currentHousehold?.name ?: "Household",
+                            tasks = allTasks,
+                            householdMembers = householdMembers,
+                            onBackClicked = { navController.popBackStack() },
+                            onSettingsClicked = { navController.navigate("settings") }
+                        )
+                    }
                 }
             }
         }
     }
 
-    private fun createNotificationChannel(){
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channelId = "choreo_task_reminders"
             val name = "Task Reminders"
             val descriptionText = "notifies you about upcoming household tasks"
             val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel(channelId, name, importance).apply{
+            val channel = NotificationChannel(channelId, name, importance).apply {
                 description = descriptionText
             }
 
-            val notificationManager: NotificationManager = getSystemService(NotificationManager::class.java)
+            val notificationManager: NotificationManager =
+                getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
         }
     }

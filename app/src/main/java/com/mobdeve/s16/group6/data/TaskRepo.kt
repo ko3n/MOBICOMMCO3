@@ -94,6 +94,13 @@ class TaskRepo(context: Context) {
     }
 
     /**
+     * Provides a Flow of lists of all Task objects for a specific household from Room.
+     */
+    fun getTasksForHousehold(householdId: Int): Flow<List<Task>> {
+        return taskDao.getTasksForHousehold(householdId)
+    }
+
+    /**
      * Provides a Flow of lists of all Person objects for a given household ID from Room.
      * (This method seems to be misplaced in TaskRepo, but keeping it as per original for now)
      */
