@@ -214,7 +214,6 @@ fun TaskScreen(
             IconButton(
                 onClick = {
                     onSettingsClicked()
-                    Toast.makeText(context, "Settings Clicked!", Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier
                     .align(Alignment.BottomStart)

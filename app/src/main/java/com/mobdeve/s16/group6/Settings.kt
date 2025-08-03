@@ -38,6 +38,7 @@ fun SettingsScreen(
         }
     }
 
+    var showLogoutDialog by remember { mutableStateOf(false) } //logout confirmation
     var notificationsOn by remember { mutableStateOf(true) }
     var addTasksOnTop by remember { mutableStateOf(true) }
     var remindersOn by remember { mutableStateOf(true) }
@@ -78,7 +79,7 @@ fun SettingsScreen(
             HorizontalDivider()
             Spacer(modifier = Modifier.weight(1f))
             Button(
-                onClick = onLogoutClicked,
+                onClick = { showLogoutDialog = true },
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.buttonColors(containerColor = AppDarkBlue, contentColor = Color.Red),
                 modifier = Modifier
@@ -91,6 +92,36 @@ fun SettingsScreen(
                     Text("Logout", fontWeight = FontWeight.Bold)
                 }
             }
+        }
+        if (showLogoutDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    // This allows the user to dismiss the dialog by clicking outside of it
+                    showLogoutDialog = false
+                },
+                title = { Text("Confirm Logout") },
+                text = { Text("Are you sure you want to log out?") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showLogoutDialog = false // Close the dialog
+                            onLogoutClicked()      // Execute the actual logout
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                    ) {
+                        Text("Logout")
+                    }
+                },
+                dismissButton = {
+                    Button(
+                        onClick = {
+                            showLogoutDialog = false // Just close the dialog
+                        }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
