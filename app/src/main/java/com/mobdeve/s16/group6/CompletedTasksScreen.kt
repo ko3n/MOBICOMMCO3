@@ -157,7 +157,7 @@ fun CompletedTasksScreen(
                     }
                 }
             }
-            // Settings Button
+           /* // Settings Button
             IconButton(
                 onClick = {
                     onSettingsClicked()
@@ -175,6 +175,8 @@ fun CompletedTasksScreen(
                     modifier = Modifier.fillMaxSize()
                 )
             }
+            
+            */
         }
     }
 }
