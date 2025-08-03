@@ -109,6 +109,8 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             val household = householdDao.findByNameOrEmail(householdName, householdEmail)
             household?.let {
+                taskRepo.updateAllTaskStatusesForHousehold(it.id)
+
                 currentHouseholdId = it.id
                 currentPersonId = personId
                 Log.d(TAG, "Household found: ID=${it.id}, Name=${it.name}. Starting sync and data collection.")

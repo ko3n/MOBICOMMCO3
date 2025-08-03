@@ -161,4 +161,14 @@ class TaskRepo(context: Context) {
             }
         }
     }
+
+    suspend fun updateAllTaskStatusesForHousehold(householdId: Int) {
+        val tasks = getAllIncompleteTasksForHousehold(householdId)
+        for (task in tasks) {
+            val newStatus = calculateStatus(task)
+            if (task.status != newStatus) {
+                taskDao.update(task.copy(status = newStatus))
+            }
+        }
+    }
 }

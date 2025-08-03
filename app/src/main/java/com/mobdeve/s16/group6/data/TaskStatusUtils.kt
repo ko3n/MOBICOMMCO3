@@ -20,8 +20,8 @@ fun calculateStatus(task: Task): TaskStatus {
                 dueCal.get(Calendar.DAY_OF_YEAR) == todayCal.get(Calendar.DAY_OF_YEAR)
 
     return when {
-        isDueToday -> TaskStatus.DUE_TODAY
         dueMillis < now -> TaskStatus.OVERDUE
+        isDueToday -> TaskStatus.DUE_TODAY
         else -> TaskStatus.UPCOMING
     }
 }

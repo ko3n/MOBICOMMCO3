@@ -361,14 +361,15 @@ fun TaskItem(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                val liveStatus = calculateStatus(task)
                 Chip(
-                    text = when (task.status) {
+                    text = when (liveStatus) {
                         TaskStatus.DUE_TODAY -> "Due Today"
                         TaskStatus.OVERDUE -> "Overdue"
                         TaskStatus.COMPLETED -> "Completed"
                         TaskStatus.UPCOMING -> "UPCOMING"
                     },
-                    color = when (task.status) {
+                    color = when (liveStatus) {
                         TaskStatus.COMPLETED -> Color(0xFF4CAF50)
                         TaskStatus.OVERDUE -> Color(0xFFF44336)
                         TaskStatus.DUE_TODAY -> Color(0xFFFFC107)
@@ -732,6 +733,10 @@ fun CreateEditTaskDialog(
                             Toast.makeText(context, "Title cannot be empty!", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
+                        if (selectedAssigneeId == null) {
+                            Toast.makeText(context, "Please select an assignee!", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
                         if (isRecurring && selectedRecurringInterval == null) {
                             Toast.makeText(context, "Please select a recurring interval!", Toast.LENGTH_SHORT).show()
                             return@Button
@@ -767,7 +772,7 @@ fun CreateEditTaskDialog(
                         )
                         onSave(finalTask)
                     },
-                    enabled = title.isNotBlank() && (!isRecurring || selectedRecurringInterval != null),
+                    enabled = title.isNotBlank() && selectedAssigneeId != null && (!isRecurring || selectedRecurringInterval != null),
                     shape = RoundedCornerShape(50),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White,
