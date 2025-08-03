@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -81,58 +82,83 @@ fun PeopleTab(
             }
         }
     ) { paddingValues ->
-        Column(
+
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(Color.White)
-                .padding(horizontal = 40.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (people.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("Is anyone home?", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = AppCardBlue)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Add household members using the button above!", fontSize = 18.sp, color = AppCardBlue.copy(alpha = 0.8f), textAlign = TextAlign.Center)
-                }
-            } else {
-                Spacer(modifier = Modifier.height(16.dp))
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    items(people) { person ->
-                        PersonItem(
-                            person = person,
-                            onPersonClick = { clickedPerson ->
-                                currentHousehold?.let { household ->
-                                    val personLocalId = clickedPerson.id // The Int ID for tasks
-                                    val personFirebaseId = clickedPerson.firebaseId // The String ID for editing
 
-                                    if (!personFirebaseId.isNullOrEmpty()) {
-                                        val encodedPersonName = URLEncoder.encode(clickedPerson.name, StandardCharsets.UTF_8.toString())
-                                        val encodedHouseholdName = URLEncoder.encode(household.name, StandardCharsets.UTF_8.toString())
-                                        val encodedHouseholdEmail = URLEncoder.encode(household.email, StandardCharsets.UTF_8.toString())
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 40.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (people.isEmpty()) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Is anyone home?", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = AppCardBlue)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Add household members using the button above!", fontSize = 18.sp, color = AppCardBlue.copy(alpha = 0.8f), textAlign = TextAlign.Center)
+                    }
+                } else {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        items(people) { person ->
+                            PersonItem(
+                                person = person,
+                                onPersonClick = { clickedPerson ->
+                                    currentHousehold?.let { household ->
+                                        val personLocalId = clickedPerson.id
+                                        val personFirebaseId = clickedPerson.firebaseId
 
-                                        // Navigate with BOTH IDs
-                                        navController.navigate(
-                                            "tasks/$personLocalId/$personFirebaseId/$encodedPersonName/$encodedHouseholdName/$encodedHouseholdEmail"
-                                        )
-                                    } else {
-                                        Toast.makeText(context, "Error: Person is not synced.", Toast.LENGTH_SHORT).show()
+                                        if (!personFirebaseId.isNullOrEmpty()) {
+                                            val encodedPersonName = URLEncoder.encode(clickedPerson.name, StandardCharsets.UTF_8.toString())
+                                            val encodedHouseholdName = URLEncoder.encode(household.name, StandardCharsets.UTF_8.toString())
+                                            val encodedHouseholdEmail = URLEncoder.encode(household.email, StandardCharsets.UTF_8.toString())
+
+                                            navController.navigate(
+                                                "tasks/$personLocalId/$personFirebaseId/$encodedPersonName/$encodedHouseholdName/$encodedHouseholdEmail"
+                                            )
+                                        } else {
+                                            Toast.makeText(context, "Error: Person is not synced.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } ?: run {
+                                        Toast.makeText(context, "Error: Household data not available.", Toast.LENGTH_SHORT).show()
                                     }
-                                } ?: run {
-                                    Toast.makeText(context, "Error: Household data not available.", Toast.LENGTH_SHORT).show()
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
+            }
+
+
+            IconButton(
+                onClick = {
+
+                    navController.navigate("settings/household")
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp)
+                    .size(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = AppCardBlue,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }

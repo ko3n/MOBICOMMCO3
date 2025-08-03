@@ -42,6 +42,7 @@ fun SettingsScreen(
     var notificationsOn by remember { mutableStateOf(true) }
     var addTasksOnTop by remember { mutableStateOf(true) }
     var remindersOn by remember { mutableStateOf(true) }
+    val isPersonSettings = !personFirebaseId.isNullOrEmpty()
 
     Scaffold(
         topBar = {
@@ -62,8 +63,11 @@ fun SettingsScreen(
                 .padding(paddingValues)
                 .background(Color.White)
         ) {
-            SettingClickableItem(text = "Profile", icon = Icons.Default.Person, onClick = onProfileClicked)
-            HorizontalDivider()
+            if (isPersonSettings) {
+                SettingClickableItem(text = "Profile", icon = Icons.Default.Person, onClick = onProfileClicked)
+                HorizontalDivider()
+            }
+
             SettingSwitchItem(text = "Notifications", checked = notificationsOn, onCheckedChange = { notificationsOn = it })
             HorizontalDivider()
             SettingSwitchItem(text = "Add new tasks on top", checked = addTasksOnTop, onCheckedChange = { addTasksOnTop = it })

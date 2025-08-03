@@ -148,7 +148,11 @@ class MainActivity : ComponentActivity() {
                                     authViewModel.setSignupError("Passwords do not match")
                                     return@SignUpScreen
                                 }
-                                authViewModel.register(householdName, email, password) { success -> }
+                                authViewModel.register(
+                                    householdName,
+                                    email,
+                                    password
+                                ) { success -> }
                             }
                         )
                     }
@@ -178,8 +182,13 @@ class MainActivity : ComponentActivity() {
                         val householdEmail = backStackEntry.arguments?.getString("householdEmail")
 
                         if (personId != null && firebaseId != null && encodedPersonName != null && householdName != null && householdEmail != null) {
-                            val personName = URLDecoder.decode(encodedPersonName, StandardCharsets.UTF_8.toString())
-                            val displayedPersonName = personToEdit?.takeIf { it.firebaseId == firebaseId }?.name ?: personName
+                            val personName = URLDecoder.decode(
+                                encodedPersonName,
+                                StandardCharsets.UTF_8.toString()
+                            )
+                            val displayedPersonName =
+                                personToEdit?.takeIf { it.firebaseId == firebaseId }?.name
+                                    ?: personName
 
                             // Initialize tasks for the person
                             LaunchedEffect(personId, householdName, householdEmail) {
@@ -196,9 +205,13 @@ class MainActivity : ComponentActivity() {
                                 onBackClicked = { navController.popBackStack() },
                                 onAddTask = { task ->
                                     taskViewModel.addTask(
-                                        title = task.title, description = task.description, dueDateMillis = task.dueDateMillis,
-                                        priority = task.priority, assigneeId = task.assigneeId,
-                                        isRecurring = task.isRecurring, recurringInterval = task.recurringInterval
+                                        title = task.title,
+                                        description = task.description,
+                                        dueDateMillis = task.dueDateMillis,
+                                        priority = task.priority,
+                                        assigneeId = task.assigneeId,
+                                        isRecurring = task.isRecurring,
+                                        recurringInterval = task.recurringInterval
                                     )
                                 },
                                 onUpdateTask = { taskViewModel.updateTask(it) },
@@ -210,49 +223,47 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Settings per person
-                    composable(
-                        "settings/{firebaseId}",
-                        arguments = listOf(navArgument("firebaseId") { type = NavType.StringType })
-                    ) { backStackEntry ->
-                        val firebaseId = backStackEntry.arguments?.getString("firebaseId")
-                        if (firebaseId != null) {
-                            SettingsScreen(
-                                personFirebaseId = firebaseId,
-                                peopleViewModel = peopleViewModel,
-                                onBackClicked = { navController.popBackStack() },
-                                onProfileClicked = { navController.navigate("editProfile") },
-                                onLogoutClicked = {
-                                    authViewModel.logout()
-                                    navController.navigate("setup") {
-                                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
-                                    }
-                                },
-                                onCompletedTasksClicked = {
-                                    navController.navigate("completedtasks")
-                                }
-                            )
-                        }
-                    }
 
-                    // Global household settings (optional: add a "settings" route with no arguments if needed)
-                    composable("settings") {
+// --- The single, smart Settings Screen route ---
+                    composable(
+                        "settings/{personId}", // The argument can now be a real firebaseId or the word "household"
+                        arguments = listOf(navArgument("personId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        // 1. Get the ID from the route.
+                        val personId = backStackEntry.arguments?.getString("personId")
+
+                        // 2. Check if we are in "household" mode. This will be true if you navigated
+                        //    from the PeopleTab's settings button (which passes "household").
+                        val isHouseholdSettings = personId == "household"
+
+                        // 3. Call the smart SettingsScreen
                         SettingsScreen(
-                            personFirebaseId = null,
+                            // Pass the real ID, or pass null if it's household settings.
+                            // The SettingsScreen will use this to show/hide the "Profile" button.
+                            personFirebaseId = if (isHouseholdSettings) null else personId,
+
                             peopleViewModel = peopleViewModel,
                             onBackClicked = { navController.popBackStack() },
-                            onProfileClicked = { navController.navigate("editProfile") },
-                            onLogoutClicked = {
-                                authViewModel.logout()
-                                navController.navigate("setup") {
-                                    popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                            onProfileClicked = {
+                                // Only allow navigation to the edit screen if we are NOT in household mode.
+                                if (!isHouseholdSettings) {
+                                    navController.navigate("editProfile")
                                 }
                             },
                             onCompletedTasksClicked = {
-                                navController.navigate("completedtasks")
+                                navController.navigate("completedTasks")
+                            },
+                            onLogoutClicked = {
+                                authViewModel.logout()
+                                navController.navigate("setup") {
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        inclusive = true
+                                    }
+                                }
                             }
                         )
                     }
+
 
                     // Edit Profile
                     composable("editProfile") {
@@ -264,7 +275,6 @@ class MainActivity : ComponentActivity() {
                                 peopleViewModel.updateUserProfile(newName)
                                 Toast.makeText(context, "Successfully Edited!", Toast.LENGTH_SHORT).show()
                                 navController.popBackStack()
-                                onSaveSuccess()
                             }
                         )
                     }
