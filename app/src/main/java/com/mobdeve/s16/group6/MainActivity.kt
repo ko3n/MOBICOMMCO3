@@ -256,12 +256,15 @@ class MainActivity : ComponentActivity() {
 
                     // Edit Profile
                     composable("editProfile") {
+                        val context = LocalContext.current
                         EditProfileScreen(
                             currentUser = personToEdit,
                             onBackClicked = { navController.popBackStack() },
-                            onSaveClicked = { newName ->
+                            onSaveClicked = { newName, onSaveSuccess ->
                                 peopleViewModel.updateUserProfile(newName)
+                                Toast.makeText(context, "Successfully Edited!", Toast.LENGTH_SHORT).show()
                                 navController.popBackStack()
+                                onSaveSuccess()
                             }
                         )
                     }

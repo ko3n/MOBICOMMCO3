@@ -17,7 +17,8 @@ import com.mobdeve.s16.group6.ui.theme.AppDarkBlue
 fun EditProfileScreen(
     currentUser: Person?,
     onBackClicked: () -> Unit,
-    onSaveClicked: (name: String) -> Unit
+
+    onSaveClicked: (name: String, onSaveSuccess: () -> Unit) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
 
@@ -54,9 +55,17 @@ fun EditProfileScreen(
                     singleLine = true
                 )
                 Spacer(modifier = Modifier.weight(1f))
+
+                val isChanged = name != currentUser.name
+
                 Button(
-                    enabled = name.isNotBlank(),
-                    onClick = { onSaveClicked(name) },
+                    enabled = name.isNotBlank() && isChanged,
+
+                    onClick = {
+                        onSaveClicked(name) {
+
+                        }
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = AppDarkBlue),
                     modifier = Modifier.fillMaxWidth().height(50.dp)
                 ) {
