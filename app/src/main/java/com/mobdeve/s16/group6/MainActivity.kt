@@ -1,7 +1,6 @@
 package com.mobdeve.s16.group6
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -17,11 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.navigation.NavType
 import com.mobdeve.s16.group6.ui.theme.ChoreoUITheme
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -30,6 +29,8 @@ import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.mobdeve.s16.group6.utils.NotificationUtils
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
@@ -54,7 +55,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-    @SuppressLint("ComposableDestinationInComposeScope")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -86,6 +86,7 @@ class MainActivity : ComponentActivity() {
 
                 val isAuthenticated by authViewModel.isAuthenticated.collectAsState()
                 val currentHousehold by authViewModel.currentHousehold.collectAsState()
+                val personToEdit by peopleViewModel.personToEdit.collectAsState()
 
                 LaunchedEffect(isAuthenticated, currentHousehold) {
                     if (isAuthenticated && currentHousehold != null) {
@@ -135,9 +136,7 @@ class MainActivity : ComponentActivity() {
                         LoginScreen(
                             onBackClicked = { navController.popBackStack() },
                             onLoginClicked = { householdName, password ->
-                                authViewModel.login(householdName, password) { success ->
-                                    // Logic handled by LaunchedEffect
-                                }
+                                authViewModel.login(householdName, password) { success -> }
                             }
                         )
                     }
@@ -149,9 +148,7 @@ class MainActivity : ComponentActivity() {
                                     authViewModel.setSignupError("Passwords do not match")
                                     return@SignUpScreen
                                 }
-                                authViewModel.register(householdName, email, password) { success ->
-                                    // Logic handled by LaunchedEffect
-                                }
+                                authViewModel.register(householdName, email, password) { success -> }
                             }
                         )
                     }
@@ -163,43 +160,45 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // Per-person Tasks
                     composable(
-                        "tasks/{personId}/{personName}/{householdName}/{householdEmail}",
+                        "tasks/{personId}/{firebaseId}/{personName}/{householdName}/{householdEmail}",
                         arguments = listOf(
                             navArgument("personId") { type = NavType.IntType },
+                            navArgument("firebaseId") { type = NavType.StringType },
                             navArgument("personName") { type = NavType.StringType },
                             navArgument("householdName") { type = NavType.StringType },
                             navArgument("householdEmail") { type = NavType.StringType }
                         )
                     ) { backStackEntry ->
-                        val tasks by taskViewModel.tasks.collectAsState()
-                        val householdMembers by taskViewModel.householdMembers.collectAsState()
-
                         val personId = backStackEntry.arguments?.getInt("personId")
-                        val personName = backStackEntry.arguments?.getString("personName")
+                        val firebaseId = backStackEntry.arguments?.getString("firebaseId")
+                        val encodedPersonName = backStackEntry.arguments?.getString("personName")
                         val householdName = backStackEntry.arguments?.getString("householdName")
                         val householdEmail = backStackEntry.arguments?.getString("householdEmail")
 
-                        if (personId != null && personName != null && householdName != null && householdEmail != null) {
+                        if (personId != null && firebaseId != null && encodedPersonName != null && householdName != null && householdEmail != null) {
+                            val personName = URLDecoder.decode(encodedPersonName, StandardCharsets.UTF_8.toString())
+                            val displayedPersonName = personToEdit?.takeIf { it.firebaseId == firebaseId }?.name ?: personName
+
+                            // Initialize tasks for the person
                             LaunchedEffect(personId, householdName, householdEmail) {
                                 taskViewModel.initialize(personId, householdName, householdEmail)
                             }
 
                             TaskScreen(
-                                personName = personName,
-                                tasks = tasks,
-                                householdMembers = householdMembers,
+                                personName = displayedPersonName,
+                                onSettingsClicked = {
+                                    navController.navigate("settings/$firebaseId")
+                                },
+                                tasks = taskViewModel.tasks.collectAsState().value,
+                                householdMembers = peopleViewModel.people.collectAsState().value,
                                 onBackClicked = { navController.popBackStack() },
-                                onSettingsClicked = { navController.navigate("settings") },
                                 onAddTask = { task ->
                                     taskViewModel.addTask(
-                                        title = task.title,
-                                        description = task.description,
-                                        dueDateMillis = task.dueDateMillis,
-                                        priority = task.priority,
-                                        assigneeId = task.assigneeId,
-                                        isRecurring = task.isRecurring,
-                                        recurringInterval = task.recurringInterval
+                                        title = task.title, description = task.description, dueDateMillis = task.dueDateMillis,
+                                        priority = task.priority, assigneeId = task.assigneeId,
+                                        isRecurring = task.isRecurring, recurringInterval = task.recurringInterval
                                     )
                                 },
                                 onUpdateTask = { taskViewModel.updateTask(it) },
@@ -207,14 +206,42 @@ class MainActivity : ComponentActivity() {
                                 taskViewModel = taskViewModel
                             )
                         } else {
-                            Text("Error: Task data missing", color = Color.Red)
+                            Text("Error: Person data missing.")
                         }
                     }
 
+                    // Settings per person
+                    composable(
+                        "settings/{firebaseId}",
+                        arguments = listOf(navArgument("firebaseId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val firebaseId = backStackEntry.arguments?.getString("firebaseId")
+                        if (firebaseId != null) {
+                            SettingsScreen(
+                                personFirebaseId = firebaseId,
+                                peopleViewModel = peopleViewModel,
+                                onBackClicked = { navController.popBackStack() },
+                                onProfileClicked = { navController.navigate("editProfile") },
+                                onLogoutClicked = {
+                                    authViewModel.logout()
+                                    navController.navigate("setup") {
+                                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                                    }
+                                },
+                                onCompletedTasksClicked = {
+                                    navController.navigate("completedtasks")
+                                }
+                            )
+                        }
+                    }
+
+                    // Global household settings (optional: add a "settings" route with no arguments if needed)
                     composable("settings") {
                         SettingsScreen(
+                            personFirebaseId = null,
+                            peopleViewModel = peopleViewModel,
                             onBackClicked = { navController.popBackStack() },
-                            onProfileClicked = { navController.navigate("profile") },
+                            onProfileClicked = { navController.navigate("editProfile") },
                             onLogoutClicked = {
                                 authViewModel.logout()
                                 navController.navigate("setup") {
@@ -227,25 +254,25 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    composable("profile") {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text("Profile Screen Placeholder")
-                            Button(onClick = { navController.popBackStack() }) {
-                                Text("Go Back")
+                    // Edit Profile
+                    composable("editProfile") {
+                        EditProfileScreen(
+                            currentUser = personToEdit,
+                            onBackClicked = { navController.popBackStack() },
+                            onSaveClicked = { newName ->
+                                peopleViewModel.updateUserProfile(newName)
+                                navController.popBackStack()
                             }
-                        }
+                        )
                     }
 
+                    // Completed Tasks (household-wide)
                     composable("completedtasks") {
                         val currentHousehold by authViewModel.currentHousehold.collectAsState()
                         val allTasks by taskViewModel.allHouseholdTasks.collectAsState()
                         val householdMembers by taskViewModel.householdMembers.collectAsState()
 
-                        // Initialize for household when entering this screen
+                        // Initialize household-wide tasks/members when entering this screen
                         LaunchedEffect(currentHousehold) {
                             currentHousehold?.let {
                                 taskViewModel.initializeForHousehold(it.name, it.email)
@@ -265,18 +292,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+    private fun createNotificationChannel(){
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
             val channelId = "choreo_task_reminders"
             val name = "Task Reminders"
             val descriptionText = "notifies you about upcoming household tasks"
             val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel(channelId, name, importance).apply {
+            val channel = NotificationChannel(channelId, name, importance).apply{
                 description = descriptionText
             }
 
-            val notificationManager: NotificationManager =
-                getSystemService(NotificationManager::class.java)
+            val notificationManager: NotificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
         }
     }

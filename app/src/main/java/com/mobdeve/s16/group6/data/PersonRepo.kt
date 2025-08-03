@@ -22,53 +22,29 @@ class PersonRepo(context: Context) {
     ): Boolean {
         val household = householdDao.findByNameOrEmail(householdName, householdEmail)
         if (household == null) {
-            Log.e(
-                "PersonRepo",
-                "Household not found for adding person: $householdName, $householdEmail"
-            )
+            Log.e("PersonRepo", "Household not found for adding person: $householdName, $householdEmail")
             return false
         }
 
-        // Create Person object for Room
         val person = Person(name = personName, householdId = household.id)
-        val result = personDao.insert(person) // Insert into Room
+        val result = personDao.insert(person)
         if (result == -1L) {
-            Log.d(
-                "PersonRepo",
-                "Person insertion into Room ignored (e.g., duplicate name in household)."
-            )
-            return false // Insertion was ignored due to conflict
+            Log.d("PersonRepo", "Person insertion into Room ignored (e.g., duplicate name).")
+            return false
         }
-        Log.d("PersonRepo", "Person inserted into Room: ${person.name}")
 
         val localPerson = personDao.getPersonByNameAndHouseholdId(personName, household.id)
         if (localPerson != null) {
-            // Sync to Firebase
             try {
                 val firebaseId = firebasePersonRepo.addPerson(localPerson)
                 if (firebaseId != null) {
                     localPerson.firebaseId = firebaseId
                     personDao.update(localPerson)
-                    Log.d(
-                        "PersonRepo",
-                        "Person synced to Firebase and local record updated with ID: $firebaseId"
-                    )
-                } else {
-                    Log.e(
-                        "PersonRepo",
-                        "Failed to get Firebase ID for new person. Local Room record not updated with Firebase ID."
-                    )
                 }
             } catch (e: Exception) {
                 Log.e("PersonRepo", "Error syncing new person to Firebase: ${e.message}", e)
             }
-        } else {
-            Log.e(
-                "PersonRepo",
-                "Failed to retrieve local person after insertion for Firebase sync. Data might be inconsistent."
-            )
         }
-
         return true
     }
 
@@ -77,5 +53,24 @@ class PersonRepo(context: Context) {
      */
     fun getPeopleForCurrentHousehold(householdId: Int): Flow<List<Person>> {
         return personDao.getPeopleForHousehold(householdId)
+    }
+
+    /**
+     * Updates a person's details in both Firebase and the local Room database.
+     * @param person The person object with updated information.
+     * @return True if the update was successful in Firebase.
+     */
+    suspend fun updatePerson(person: Person): Boolean {
+        // First, update the record in Firebase.
+        val success = firebasePersonRepo.updatePerson(person)
+
+        // If the Firebase update was successful, update the local database too.
+        if (success) {
+            personDao.update(person)
+            Log.d("PersonRepo", "Person updated successfully in Firebase and Room.")
+        } else {
+            Log.e("PersonRepo", "Failed to update person in Firebase.")
+        }
+        return success
     }
 }

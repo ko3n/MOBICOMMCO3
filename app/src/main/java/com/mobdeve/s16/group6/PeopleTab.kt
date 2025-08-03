@@ -44,7 +44,7 @@ fun PeopleTab(
 
     val people by peopleViewModel.people.collectAsState()
     val addPersonError by peopleViewModel.addPersonError.collectAsState()
-    val currentHousehold by authViewModel.currentHousehold.collectAsState() // Access currentHousehold here
+    val currentHousehold by authViewModel.currentHousehold.collectAsState()
 
     val context = LocalContext.current
     LaunchedEffect(addPersonError) {
@@ -95,19 +95,9 @@ fun PeopleTab(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "Is anyone home?",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppCardBlue
-                    )
+                    Text("Is anyone home?", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = AppCardBlue)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Add household members using the button above!",
-                        fontSize = 18.sp,
-                        color = AppCardBlue.copy(alpha = 0.8f),
-                        textAlign = TextAlign.Center
-                    )
+                    Text("Add household members using the button above!", fontSize = 18.sp, color = AppCardBlue.copy(alpha = 0.8f), textAlign = TextAlign.Center)
                 }
             } else {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -121,15 +111,23 @@ fun PeopleTab(
                             person = person,
                             onPersonClick = { clickedPerson ->
                                 currentHousehold?.let { household ->
-                                    val encodedPersonName = URLEncoder.encode(clickedPerson.name, StandardCharsets.UTF_8.toString())
-                                    val encodedHouseholdName = URLEncoder.encode(household.name, StandardCharsets.UTF_8.toString())
-                                    val encodedHouseholdEmail = URLEncoder.encode(household.email, StandardCharsets.UTF_8.toString())
+                                    val personLocalId = clickedPerson.id // The Int ID for tasks
+                                    val personFirebaseId = clickedPerson.firebaseId // The String ID for editing
 
-                                    navController.navigate(
-                                        "tasks/${clickedPerson.id}/$encodedPersonName/$encodedHouseholdName/$encodedHouseholdEmail"
-                                    )
+                                    if (!personFirebaseId.isNullOrEmpty()) {
+                                        val encodedPersonName = URLEncoder.encode(clickedPerson.name, StandardCharsets.UTF_8.toString())
+                                        val encodedHouseholdName = URLEncoder.encode(household.name, StandardCharsets.UTF_8.toString())
+                                        val encodedHouseholdEmail = URLEncoder.encode(household.email, StandardCharsets.UTF_8.toString())
+
+                                        // Navigate with BOTH IDs
+                                        navController.navigate(
+                                            "tasks/$personLocalId/$personFirebaseId/$encodedPersonName/$encodedHouseholdName/$encodedHouseholdEmail"
+                                        )
+                                    } else {
+                                        Toast.makeText(context, "Error: Person is not synced.", Toast.LENGTH_SHORT).show()
+                                    }
                                 } ?: run {
-                                    Toast.makeText(context, "Error: Household data not available to open tasks.", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Error: Household data not available.", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         )
@@ -147,7 +145,7 @@ fun PeopleTab(
                 currentHousehold?.let { household ->
                     peopleViewModel.addPerson(name, household.name, household.email)
                 } ?: run {
-                    Toast.makeText(context, "Error: Household not identified. Please re-login.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Error: Household not identified.", Toast.LENGTH_LONG).show()
                 }
             }
         )
@@ -159,110 +157,41 @@ fun PersonItem(person: Person, onPersonClick: (Person) -> Unit) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = AppLightBlue),
-        modifier = Modifier
-            .fillMaxWidth(0.8f)
-            .height(50.dp)
-            .clickable { onPersonClick(person) }
+        modifier = Modifier.fillMaxWidth(0.8f).height(50.dp).clickable { onPersonClick(person) }
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = person.name,
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(text = person.name, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 16.dp))
         }
     }
 }
-
-
 @Composable
 fun CreatePersonDialog(onDismiss: () -> Unit, onAddPerson: (String) -> Unit) {
     var name by remember { mutableStateOf("") }
-
     Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = AppCardBlue),
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "create new",
-                        color = Color.White,
-                        textDecoration = TextDecoration.Underline,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = Color.White,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clickable { onDismiss() }
-                    )
+        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = AppCardBlue), modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("create new", color = Color.White, textDecoration = TextDecoration.Underline, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(24.dp).clickable { onDismiss() })
                 }
-
                 Spacer(modifier = Modifier.height(24.dp))
-
                 TextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    modifier = Modifier.fillMaxWidth(),
+                    value = name, onValueChange = { name = it }, modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("Enter person's name", color = Color.Gray) },
-                    shape = RoundedCornerShape(16.dp),
-                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp), singleLine = true,
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = AppGray,
-                        unfocusedContainerColor = AppGray,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedContainerColor = AppGray, unfocusedContainerColor = AppGray,
+                        focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
                         cursorColor = Color.Black
                     )
                 )
-
                 Spacer(modifier = Modifier.height(16.dp))
-
                 Button(
-                    onClick = { onAddPerson(name) },
-                    enabled = name.isNotBlank(),
-                    shape = RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = AppDarkBlue
-                    ),
+                    onClick = { onAddPerson(name) }, enabled = name.isNotBlank(), shape = RoundedCornerShape(50),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = AppDarkBlue),
                     modifier = Modifier.align(Alignment.End)
-                ) {
-                    Text("Add", fontWeight = FontWeight.Bold)
-                }
+                ) { Text("Add", fontWeight = FontWeight.Bold) }
             }
         }
-    }
-}
-
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun PeopleTabPreview() {
-    ChoreoUITheme {
-        PeopleTab(
-            peopleViewModel = PeopleViewModel(Application()),
-            authViewModel = AuthViewModel(Application()),
-            navController = rememberNavController()
-        )
     }
 }
