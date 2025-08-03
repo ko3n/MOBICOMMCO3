@@ -16,6 +16,9 @@ interface HouseholdDao {
     @Query("SELECT * FROM households WHERE name = :name OR email = :email LIMIT 1")
     suspend fun findByNameOrEmail(name: String, email: String): Household?
 
+    @Query("SELECT * FROM households WHERE name = :name LIMIT 1")
+    suspend fun findByName(name: String): Household?
+
     @Query("SELECT * FROM households WHERE name = :name AND password = :password LIMIT 1")
     suspend fun authenticate(name: String, password: String): Household?
 

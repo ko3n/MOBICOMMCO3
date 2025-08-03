@@ -7,6 +7,7 @@ import com.mobdeve.s16.group6.data.Household
 import com.mobdeve.s16.group6.data.HouseholdRepo
 import com.mobdeve.s16.group6.data.PersonRepo
 import com.mobdeve.s16.group6.data.TaskRepo
+import com.mobdeve.s16.group6.utils.PasswordValidator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,7 +35,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             var household = householdRepo.authenticateAndGetHousehold(householdName, password)
 
             if (household != null) {
-                // Always get the latest local household (with correct Room id)
                 val updatedHousehold = HouseholdRepo(getApplication()).getLocalHouseholdByNameOrEmail(household.name, household.email) ?: household
 
                 val personRepo = PersonRepo(getApplication())
@@ -57,6 +57,13 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun register(householdName: String, email: String, password: String, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             _signupErrorMessage.value = null
+
+            if (!PasswordValidator.isValid(password)) {
+                _signupErrorMessage.value = "Password must be at least 8 characters long, contain at least 1 number, 1 uppercase & 1 lowercase letter."
+                onComplete(false)
+                return@launch
+            }
+
             when (householdRepo.register(householdName, email, password)) {
                 HouseholdRepo.RegistrationResult.Success -> {
                     val household = householdRepo.authenticateAndGetHousehold(householdName, password)

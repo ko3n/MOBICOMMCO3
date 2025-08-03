@@ -46,7 +46,6 @@ class FirebaseTaskRepo(context: Context) {
         }
     }
 
-    // Always deserialize into DTO, not Room model!
     suspend fun getTasksForHousehold(householdId: String): List<TaskRepo.FirebaseTaskDTO> {
         return try {
             val snapshot = tasksRef.orderByChild("householdId").equalTo(householdId).get().await()

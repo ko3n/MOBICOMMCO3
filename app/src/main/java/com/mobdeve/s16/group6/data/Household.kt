@@ -15,8 +15,9 @@ data class Household(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
     val email: String,
-    val password: String, // need to hash
+    val password: String,
+    val salt: String,
     var firebaseId: String? = null
 ){
-    constructor(): this(0, "", "", "", null)
+    constructor(): this(0, "", "", "",  "", null)
 }

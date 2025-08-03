@@ -21,7 +21,6 @@ class FirebaseHouseholdRepo {
             }
             firebaseId
         } catch (e: Exception) {
-            // Log the exception or handle it as needed
             e.printStackTrace()
             null
         }

@@ -14,7 +14,9 @@ class HouseholdRepo(context: Context) {
             return RegistrationResult.Duplicate
         }
 
-        val household = Household(name = name, email = email, password = password)
+        val salt = PasswordUtils.generateSalt()
+        val hashedPassword = PasswordUtils.hashPassword(password, salt)
+        val household = Household(name = name, email = email, password = hashedPassword, salt = salt)
         dao.insert(household)
         Log.d("HouseholdRepo", "Household inserted into Room: ${household.name}")
 
@@ -40,16 +42,19 @@ class HouseholdRepo(context: Context) {
     }
 
     suspend fun authenticateAndGetHousehold(name: String, password: String): Household? {
-        var household = dao.authenticate(name, password)
-        if (household == null) {
-            // Try to import from Firebase if not found locally
-            household = syncHouseholdFromCloud(name, "")
-            // Check password after import
-            if (household != null && household.password == password) {
+        val household = dao.findByName(name)
+        if (household != null) {
+            if (PasswordUtils.verifyPassword(password, household.salt, household.password)) {
                 return household
             }
+            return null
         }
-        return household
+
+        val cloudHousehold = syncHouseholdFromCloud(name, "")
+        if (cloudHousehold != null && PasswordUtils.verifyPassword(password, cloudHousehold.salt, cloudHousehold.password)) {
+            return cloudHousehold
+        }
+        return null
     }
 
     suspend fun syncHouseholdFromCloud(name: String, email: String): Household? {

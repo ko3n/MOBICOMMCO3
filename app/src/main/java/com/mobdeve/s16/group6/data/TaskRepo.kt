@@ -122,7 +122,6 @@ class TaskRepo(context: Context) {
                 status = dto.status
             )
             val local = taskDao.getTaskById(roomTask.id)
-            // You may want to check for duplicates by another criteria (e.g. title+dueDate+householdId)
             if (local == null) {
                 taskDao.insert(roomTask)
             }
