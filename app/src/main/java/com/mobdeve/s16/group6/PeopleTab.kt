@@ -1,6 +1,7 @@
 package com.mobdeve.s16.group6
 
 import android.app.Application
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,6 +30,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.mobdeve.s16.group6.data.EventType
+import com.mobdeve.s16.group6.data.FeedEvent
 import com.mobdeve.s16.group6.data.Person
 import com.mobdeve.s16.group6.ui.theme.*
 import java.net.URLEncoder
@@ -39,8 +42,15 @@ import java.nio.charset.StandardCharsets
 fun PeopleTab(
     peopleViewModel: PeopleViewModel = viewModel(),
     authViewModel: AuthViewModel = viewModel(),
+    taskViewModel: TaskViewModel,
     navController: NavController
 ) {
+    val feed by taskViewModel.feedEvents.collectAsState()
+
+    LaunchedEffect(feed) {
+        Log.d("FeedDebug", "Collected feed with ${feed.size} events")
+    }
+
     var showDialog by remember { mutableStateOf(false) }
 
     val people by peopleViewModel.people.collectAsState()
@@ -109,7 +119,8 @@ fun PeopleTab(
                 } else {
                     Spacer(modifier = Modifier.height(16.dp))
                     LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
+                            .weight(1f),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -137,6 +148,29 @@ fun PeopleTab(
                                     }
                                 }
                             )
+                        }
+                    }
+
+                    //start of home feed
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Recent Activity",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = AppCardBlue,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f), // same vertical space as the people list
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        items(feed) { event ->
+                            FeedItem(event = event)
                         }
                     }
                 }
@@ -218,6 +252,36 @@ fun CreatePersonDialog(onDismiss: () -> Unit, onAddPerson: (String) -> Unit) {
                     modifier = Modifier.align(Alignment.End)
                 ) { Text("Add", fontWeight = FontWeight.Bold) }
             }
+        }
+    }
+}
+
+@Composable
+fun FeedItem(event: FeedEvent) {
+
+    //debug
+    Log.d("FeedDebug", "Rendering feed item: ${event.taskTitle}")
+
+    val dateFormatted = remember(event.timestamp) {
+        java.text.SimpleDateFormat("MMM dd, h:mm a", java.util.Locale.getDefault())
+            .format(java.util.Date(event.timestamp))
+    }
+
+    val message = when (event.eventType) {
+        EventType.CREATED -> "${event.userName} created \"${event.taskTitle}\""
+        EventType.MODIFIED -> "${event.userName} modified \"${event.taskTitle}\""
+        EventType.DELETED -> "${event.userName} deleted \"${event.taskTitle}\""
+        EventType.COMPLETED -> "${event.userName} completed \"${event.taskTitle}\"!"
+    }
+
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = AppGray),
+        modifier = Modifier.fillMaxWidth(0.9f)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(text = dateFormatted, fontSize = 12.sp, color = Color.DarkGray)
+            Text(text = message, fontWeight = FontWeight.Medium, fontSize = 14.sp)
         }
     }
 }

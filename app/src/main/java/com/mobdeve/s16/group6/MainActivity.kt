@@ -34,6 +34,7 @@ import com.mobdeve.s16.group6.utils.NotificationUtils
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mobdeve.s16.group6.data.TaskStatus
 
 // SharedPreferences helpers for onboarding flag
 fun hasCompletedOnboarding(context: Context): Boolean {
@@ -191,6 +192,7 @@ class MainActivity : ComponentActivity() {
                         PeopleTab(
                             peopleViewModel = peopleViewModel,
                             authViewModel = authViewModel,
+                            taskViewModel = taskViewModel,
                             navController = navController
                         )
                     }
@@ -223,28 +225,29 @@ class MainActivity : ComponentActivity() {
                                 taskViewModel.initialize(personId, householdName, householdEmail)
                             }
 
-                            TaskScreen(
-                                personName = displayedPersonName,
-                                onSettingsClicked = {
-                                    navController.navigate("settings/$firebaseId")
-                                },
-                                tasks = taskViewModel.tasks.collectAsState().value,
-                                householdMembers = peopleViewModel.people.collectAsState().value,
-                                onBackClicked = { navController.popBackStack() },
-                                onAddTask = { task ->
-                                    taskViewModel.addTask(
-                                        title = task.title,
-                                        description = task.description,
-                                        dueDateMillis = task.dueDateMillis,
-                                        priority = task.priority,
-                                        assigneeId = task.assigneeId,
-                                        isRecurring = task.isRecurring,
-                                        recurringInterval = task.recurringInterval
-                                    )
-                                },
-                                onUpdateTask = { taskViewModel.updateTask(it) },
-                                onDeleteTask = { taskViewModel.deleteTask(it) },
-                                taskViewModel = taskViewModel
+                                TaskScreen(
+                                    personName = displayedPersonName,
+                                    onSettingsClicked = {
+                                        navController.navigate("settings/$firebaseId")
+                                    },
+                                    tasks = taskViewModel.tasks.collectAsState().value,
+                                    householdMembers = peopleViewModel.people.collectAsState().value,
+                                    onBackClicked = { navController.popBackStack() },
+                                    onAddTask = { task ->
+                                        taskViewModel.addTask(
+                                            title = task.title,
+                                            description = task.description,
+                                            dueDateMillis = task.dueDateMillis,
+                                            priority = task.priority,
+                                            assigneeId = task.assigneeId,
+                                            isRecurring = task.isRecurring,
+                                            recurringInterval = task.recurringInterval
+                                        )
+                                    },
+                                    onUpdateTask = { taskViewModel.updateTask(it) },
+                                    onDeleteTask = { taskViewModel.deleteTask(it) },
+
+                                    taskViewModel = taskViewModel
                             )
                         } else {
                             Text("Error: Person data missing.")

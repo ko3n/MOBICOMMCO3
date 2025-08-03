@@ -200,8 +200,15 @@ fun TaskScreen(
                                 householdMembers = householdMembers,
                                 onEditClick = { taskToEdit = it; showCreateEditDialog = true },
                                 onDeleteClick = { taskToDelete = it; showDeleteConfirmationDialog = true },
+//                                onCompleteClick = { t, checked ->
+//                                    if (checked) onUpdateTask(t.copy(status = TaskStatus.COMPLETED))
+//                                    else onUpdateTask(t.copy(status = calculateStatus(t.copy(status = TaskStatus.UPCOMING))))
+//                                }
+                                //using
                                 onCompleteClick = { t, checked ->
-                                    if (checked) onUpdateTask(t.copy(status = TaskStatus.COMPLETED))
+                                    if (checked && t.status != TaskStatus.COMPLETED) {
+                                        taskViewModel.markTaskCompleted(t)
+                                    }
                                     else onUpdateTask(t.copy(status = calculateStatus(t.copy(status = TaskStatus.UPCOMING))))
                                 }
                             )
