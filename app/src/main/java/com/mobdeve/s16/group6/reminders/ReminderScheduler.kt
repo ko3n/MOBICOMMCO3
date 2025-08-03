@@ -58,7 +58,7 @@ object ReminderScheduler {
 //            Log.d("ReminderScheduler", "Notifications are disabled in settings. Skipping reminder scheduling for task ID $taskId.")
 //            return
 //        }
-        Log.d("ReminderScheduler", "Notifications are enabled. Proceeding with scheduling for task ID $taskId.")
+        Log.d("ReminderScheduler", "Scheduling reminder for task ID $taskId.")
         //debug reminder
 //        scheduleReminder(context, taskId, System.currentTimeMillis() + 15_000L, "due15s")
         scheduleReminder(context, taskId, dueTimeMillis, "due")

@@ -20,7 +20,7 @@ object NotificationUtils {
         //check if notifs disabled (false = disabled)
         val settingsManager = SettingsManager(context)
         if (!settingsManager.getNotificationPreference()) {
-            Log.d("ReminderScheduler", "Notifications are disabled. Did not show: $message")
+            Log.d("ReminderScheduler", "Notification suppressed (disabled): [TaskID=$notificationId] $title – $message")
             return
         }
 
