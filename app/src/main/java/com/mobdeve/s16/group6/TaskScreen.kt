@@ -1,6 +1,8 @@
 package com.mobdeve.s16.group6
 
+import android.app.Application
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.widget.DatePicker
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -42,6 +44,8 @@ import com.mobdeve.s16.group6.data.TaskPriority
 import com.mobdeve.s16.group6.data.TaskStatus
 import com.mobdeve.s16.group6.data.calculateStatus
 import com.mobdeve.s16.group6.ui.theme.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -57,13 +61,18 @@ fun TaskScreen(
     onSettingsClicked: () -> Unit,
     onAddTask: (Task) -> Unit,
     onUpdateTask: (Task) -> Unit,
-    onDeleteTask: (Task) -> Unit
+    onDeleteTask: (Task) -> Unit,
+    taskViewModel: TaskViewModel
 ) {
     val context = LocalContext.current
     var showCreateEditDialog by remember { mutableStateOf(false) }
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var taskToDelete by remember { mutableStateOf<Task?>(null) }
+    val statusOptions = TaskStatus.values()
+    var expanded by remember { mutableStateOf(false) }
+    val selectedStatus by taskViewModel.taskStatusFilter.collectAsState()
+    val filteredTasks by taskViewModel.filteredTasks.collectAsState()
 
     Scaffold(
         topBar = {
@@ -121,13 +130,45 @@ fun TaskScreen(
                 .padding(paddingValues)
                 .background(Color.White)
         ) {
+            // Main content
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (tasks.isEmpty()) {
+                // Filter dropdown
+                Spacer(modifier = Modifier.height(16.dp))
+                Box {
+                    Button(onClick = { expanded = true }) {
+                        Text(text = selectedStatus?.displayName() ?: "All Statuses")
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("All Statuses") },
+                            onClick = {
+                                taskViewModel.setTaskStatusFilter(null)
+                                expanded = false
+                            }
+                        )
+                        statusOptions.forEach { status ->
+                            DropdownMenuItem(
+                                text = { Text(status.displayName()) },
+                                onClick = {
+                                    taskViewModel.setTaskStatusFilter(status)
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (filteredTasks.isEmpty()) {
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.Center,
@@ -148,21 +189,20 @@ fun TaskScreen(
                         )
                     }
                 } else {
-                    Spacer(modifier = Modifier.height(16.dp))
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        items(tasks) { task ->
+                        items(filteredTasks) { task ->
                             TaskItem(
                                 task = task,
                                 householdMembers = householdMembers,
                                 onEditClick = { taskToEdit = it; showCreateEditDialog = true },
                                 onDeleteClick = { taskToDelete = it; showDeleteConfirmationDialog = true },
-                                onCompleteClick = { task, checked ->
-                                    if (checked) onUpdateTask(task.copy(status = TaskStatus.COMPLETED))
-                                    else onUpdateTask(task.copy(status = calculateStatus(task.copy(status = TaskStatus.UPCOMING))))
+                                onCompleteClick = { t, checked ->
+                                    if (checked) onUpdateTask(t.copy(status = TaskStatus.COMPLETED))
+                                    else onUpdateTask(t.copy(status = calculateStatus(t.copy(status = TaskStatus.UPCOMING))))
                                 }
                             )
                         }
@@ -170,7 +210,7 @@ fun TaskScreen(
                 }
             }
 
-            // Settings Button
+            // Settings Button - direct child of Box, so align works!
             IconButton(
                 onClick = {
                     onSettingsClicked()
@@ -179,7 +219,7 @@ fun TaskScreen(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(16.dp)
-                    .size(48.dp) 
+                    .size(48.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Settings,
@@ -195,7 +235,10 @@ fun TaskScreen(
         CreateEditTaskDialog(
             task = taskToEdit,
             householdMembers = householdMembers,
-            onDismiss = { showCreateEditDialog = false },
+            onDismiss = {
+                showCreateEditDialog = false
+                taskToEdit = null
+            },
             onSave = { updatedTask ->
                 if (taskToEdit == null) {
                     onAddTask(updatedTask)
@@ -210,7 +253,10 @@ fun TaskScreen(
 
     if (showDeleteConfirmationDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteConfirmationDialog = false },
+            onDismissRequest = {
+                showDeleteConfirmationDialog = false
+                taskToDelete = null
+            },
             title = { Text("Delete Task") },
             text = { Text("Are you sure you want to delete '${taskToDelete?.title}'?") },
             confirmButton = {
@@ -269,7 +315,6 @@ fun TaskItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Checkbox on the left of the title
                 Checkbox(
                     checked = task.status == TaskStatus.COMPLETED,
                     onCheckedChange = { checked ->
@@ -277,7 +322,6 @@ fun TaskItem(
                     }
                 )
 
-                // Title next to checkbox
                 Text(
                     text = task.title,
                     color = AppTextBlack,
@@ -286,7 +330,6 @@ fun TaskItem(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Icons aligned to the right
                 IconButton(onClick = { onEditClick(task) }, modifier = Modifier.size(24.dp)) {
                     Icon(Icons.Default.Edit, "Edit Task", tint = AppTextBlack)
                 }
@@ -320,10 +363,10 @@ fun TaskItem(
                         TaskStatus.UPCOMING -> "UPCOMING"
                     },
                     color = when (task.status) {
-                        TaskStatus.COMPLETED -> Color(0xFF4CAF50) // Green
-                        TaskStatus.OVERDUE -> Color(0xFFF44336)   // Red
-                        TaskStatus.DUE_TODAY -> Color(0xFFFFC107) // Amber
-                        else -> AppCardBlue                        // Default blue/gray
+                        TaskStatus.COMPLETED -> Color(0xFF4CAF50)
+                        TaskStatus.OVERDUE -> Color(0xFFF44336)
+                        TaskStatus.DUE_TODAY -> Color(0xFFFFC107)
+                        else -> AppCardBlue
                     }
                 )
 
@@ -504,7 +547,6 @@ fun CreateEditTaskDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 val timeText = String.format("%02d:%02d", selectedHour, selectedMinute)
-//                val context = LocalContext.current
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -518,10 +560,9 @@ fun CreateEditTaskDialog(
                         modifier = Modifier.weight(1f)
                     )
 
-//                    val context = LocalContext.current
                     Button(
                         onClick = {
-                            val timePickerDialog = android.app.TimePickerDialog(
+                            val timePickerDialog = TimePickerDialog(
                                 context,
                                 { _, hourOfDay, minute ->
                                     selectedHour = hourOfDay
@@ -747,19 +788,42 @@ fun CreateEditTaskDialog(
     }
 }
 
+fun TaskStatus.displayName(): String = when (this) {
+    TaskStatus.DUE_TODAY -> "DUE TODAY"
+    TaskStatus.OVERDUE -> "OVERDUE"
+    TaskStatus.COMPLETED -> "COMPLETED"
+    TaskStatus.UPCOMING -> "UPCOMING"
+}
+
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun TaskScreenPreview() {
+    val previewTaskViewModel = remember { PreviewTaskViewModel() }
     ChoreoUITheme {
         TaskScreen(
             personName = "John Doe",
-            tasks = emptyList(), // Provide an empty list for the initial preview state
-            householdMembers = emptyList(), // Provide an empty list for the initial preview state
+            tasks = emptyList(),
+            householdMembers = emptyList(),
             onBackClicked = {},
             onSettingsClicked = {},
             onAddTask = {},
             onUpdateTask = {},
-            onDeleteTask = {}
+            onDeleteTask = {},
+            taskViewModel = previewTaskViewModel
         )
+    }
+}
+
+// Helper for preview only
+class PreviewTaskViewModel : TaskViewModel(Application()){
+    private val _taskStatusFilter = MutableStateFlow<TaskStatus?>(null)
+    override val taskStatusFilter: StateFlow<TaskStatus?> = _taskStatusFilter
+
+    private val _filteredTasks = MutableStateFlow<List<Task>>(emptyList())
+    override val filteredTasks: StateFlow<List<Task>> = _filteredTasks
+
+    override fun setTaskStatusFilter(status: TaskStatus?) {
+        _taskStatusFilter.value = status
+        _filteredTasks.value = emptyList()
     }
 }

@@ -206,7 +206,8 @@ class MainActivity : ComponentActivity() {
                                     )
                                 },
                                 onUpdateTask = { taskViewModel.updateTask(it) },
-                                onDeleteTask = { taskViewModel.deleteTask(it) }
+                                onDeleteTask = { taskViewModel.deleteTask(it) },
+                                taskViewModel = taskViewModel
                             )
                         } else {
                             Text("Error: Task data missing", color = Color.Red)

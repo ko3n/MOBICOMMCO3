@@ -12,11 +12,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch //important
 import com.mobdeve.s16.group6.reminders.ReminderScheduler
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class TaskViewModel(application: Application) : AndroidViewModel(application) {
+open class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
     private val taskRepo = TaskRepo(application)
     private val householdDao = AppDatabase.getInstance(application).householdDao()
@@ -30,6 +33,16 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
     private var currentHouseholdId: Int? = null
     private var currentPersonId: Int? = null
+
+    private val _taskStatusFilter = MutableStateFlow<TaskStatus?>(null)
+    open val taskStatusFilter: StateFlow<TaskStatus?> = _taskStatusFilter
+
+    open val filteredTasks: StateFlow<List<Task>> = tasks
+        .combine(_taskStatusFilter) { tasks, statusFilter ->
+            statusFilter?.let { filter ->
+                tasks.filter { it.status == filter }
+            } ?: tasks
+        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     companion object {
         private const val TAG = "TaskViewModel"
@@ -168,5 +181,9 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
             val completedTask = task.copy(status = TaskStatus.COMPLETED)
             updateTask(completedTask)
         }
+    }
+
+    open fun setTaskStatusFilter(status: TaskStatus?) {
+        _taskStatusFilter.value = status
     }
 }
