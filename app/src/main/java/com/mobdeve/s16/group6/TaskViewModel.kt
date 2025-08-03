@@ -50,6 +50,7 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
      * Initializes the ViewModel with the context of the current person and household.
      * This method must be called when navigating to the TaskScreen.
      * It fetches tasks for the given person and all household members for assignee selection.
+     * It now syncs tasks from Firebase before collecting local data.
      */
     fun initialize(personId: Int, householdName: String, householdEmail: String) {
         Log.d(TAG, "Initializing for personId: $personId, householdName: $householdName, householdEmail: $householdEmail")
@@ -58,9 +59,12 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
             household?.let {
                 currentHouseholdId = it.id
                 currentPersonId = personId
-                Log.d(TAG, "Household found: ID=${it.id}, Name=${it.name}. Starting data collection.")
+                Log.d(TAG, "Household found: ID=${it.id}, Name=${it.name}. Starting sync and data collection.")
 
-                // Launch each collection in its own coroutine to allow concurrent collection
+                // 1. Sync tasks from Firebase to Room before collecting local tasks
+                syncTasksFromFirebaseToRoom(it)
+
+                // 2. Collect local tasks and members
                 launch {
                     taskRepo.getTasksForPerson(personId, it.id).collectLatest { taskList ->
                         _tasks.value = taskList
@@ -173,12 +177,20 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
     private val _allHouseholdTasks = MutableStateFlow<List<Task>>(emptyList())
     val allHouseholdTasks: StateFlow<List<Task>> = _allHouseholdTasks.asStateFlow()
 
+    /**
+     * Initializes the ViewModel to collect all household tasks.
+     * It now syncs tasks from Firebase before collecting local data.
+     */
     fun initializeForHousehold(householdName: String, householdEmail: String) {
         viewModelScope.launch {
             val household = householdDao.findByNameOrEmail(householdName, householdEmail)
             household?.let {
                 currentHouseholdId = it.id
-                // Collect all tasks for the household (not just one person)
+
+                // 1. Sync tasks from Firebase to Room before collecting local tasks
+                syncTasksFromFirebaseToRoom(it)
+
+                // 2. Collect all tasks for the household (not just one person)
                 launch {
                     taskRepo.getTasksForHousehold(it.id).collectLatest { taskList ->
                         _allHouseholdTasks.value = taskList
@@ -199,13 +211,18 @@ open class TaskViewModel(application: Application) : AndroidViewModel(applicatio
      * This is the version that prevents duplicates and does not access Room on the main thread.
      */
     fun syncTasksFromFirebaseToRoom(household: Household) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                taskRepo.syncTasksForHouseholdFromCloud(household)
-                Log.d(TAG, "Firebase-to-Room sync finished.")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during Firebase-to-Room sync: ${e.message}", e)
+        // Only sync if we have a firebaseId
+        if (household.firebaseId != null) {
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    taskRepo.syncTasksForHouseholdFromCloud(household)
+                    Log.d(TAG, "Firebase-to-Room sync finished.")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error during Firebase-to-Room sync: ${e.message}", e)
+                }
             }
+        } else {
+            Log.w(TAG, "Household firebaseId is null, skipping cloud sync.")
         }
     }
 
