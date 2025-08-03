@@ -66,7 +66,7 @@ fun SettingsScreen(
         ) {
             // Profile Section
             SettingClickableItem(
-                text = "Profile",
+                text = "Edit Profile",
                 icon = Icons.Default.Person,
                 onClick = onProfileClicked
             )
