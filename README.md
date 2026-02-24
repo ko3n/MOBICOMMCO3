@@ -1,53 +1,30 @@
-# Project Documentation
+# CHOREO - Household Task Management Application
 
-## Project Description
-This project, MOBICOMMCO3, is designed for mobile communication with a focus on enhancing user experience and functionality. It aims to provide seamless communication tools that are easy to use and integrate with various platforms.
+A modern Android application built with Kotlin and Jetpack Compose that helps households manage chores, track progress, and ensure fair task distribution among family members.
+
+## Overview
+
+CHOREO is a task management system designed specifically for households. It enables families to create tasks, assign them to members, track progress, and provide feedback on completed chores. The application features a beautiful UI, Firebase backend integration, and offline-first capabilities using Room database.
 
 ## Features
-- Real-time messaging
-- Push notifications
-- User-friendly interface
-- Multi-platform support
+
+- User Registration and Authentication: Create household accounts with secure password hashing
+- Task Management: Create, assign, and track household chores with priorities and due dates
+- Recurring Tasks: Support for daily, weekly, monthly, and yearly recurring tasks
+- Task Status Tracking: Tasks automatically categorized as Upcoming, Due Today, Overdue, or Completed
+- Household Members: Manage multiple family members within a household
+- Real-time Sync: Firebase Realtime Database integration for cloud synchronization
+- Offline Support: Room database for local data persistence
+- Onboarding Flow: Step-by-step user introduction to application features
+- Material Design 3: Modern UI components and responsive layouts
 
 ## Tech Stack
-- **Frontend:** React, Redux
-- **Backend:** Node.js, Express
-- **Database:** MongoDB
-- **Cloud Services:** AWS
 
-## Setup Instructions
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/ko3n/MOBICOMMCO3.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd MOBICOMMCO3
-   ```
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
-4. Run the application:
-   ```bash
-   npm start
-   ```
-
-## Project Structure
-```
-MOBICOMMCO3/
-├── frontend/
-├── backend/
-└── docs/
-```
-
-## Database Schema
-- **Users**: Stores user information and authentication details.
-- **Messages**: Contains the messages exchanged between users.
-- **Notifications**: Keeps track of push notifications for users.
-
-## Usage Guide
-- To send a message, log in to your account and navigate to the messaging section.
-- For push notifications, ensure that notifications are enabled in the application settings.
-
-Feel free to contribute to this project by submitting pull requests for new features or improvements.
+- Language: Kotlin
+- UI Framework: Jetpack Compose with Material Design 3
+- Database: Room (SQLite)
+- Backend: Firebase Realtime Database and Analytics
+- Architecture: MVVM pattern with Repository pattern
+- Async: Kotlin Coroutines
+- Navigation: Jetpack Navigation Compose
+- Build System: Gradle with Kotlin DSL
